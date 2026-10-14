@@ -5,7 +5,7 @@ Resume from this checklist and Git history. Never equate implemented with tested
 ## Prioritized milestones
 
 - [x] Read task, product, architecture, acceptance and research documents; inspect clean starter repository.
-- [ ] A: Audit dependencies and API contracts; record decisions and verification constraints.
+- [x] A: Audit dependencies and API contracts; record decisions and verification constraints.
 - [ ] B1: Shared Swift package, real Jellyfin HTTP client, secure accounts, fixture tests.
 - [ ] B2: Native iOS/tvOS project, onboarding, profiles, catalog, search and details.
 - [ ] B3: Consent-safe playback, AVPlayer, durable progress and cancellable next episode.
@@ -23,3 +23,5 @@ Resume from this checklist and Git history. Never equate implemented with tested
 ## Milestone results
 
 Planning: required documents read; no code tests exist yet. This file created before implementation.
+
+Audit: private repository/push permissions verified. Reviewed upstream sources and macOS runner manifest; choose Xcode 16.4 on macOS 15. No runtime dependency copied. API fixtures/tests are next; no Swift execution available locally.
