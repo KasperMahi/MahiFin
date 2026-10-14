@@ -48,6 +48,22 @@ final class CoreTests: XCTestCase {
         XCTAssertThrowsError(try JellyfinClient(server: URL(string: "http://example.invalid")!, deviceID: "test"))
         XCTAssertThrowsError(try JellyfinClient(server: URL(string: "https://user:pass@example.invalid")!, deviceID: "test"))
     }
+    func testPositionUpdatePreservesUnrelatedFields() async throws {
+        let transport = FixtureTransport("{}")
+        try await client(transport).savePosition(user: "u", item: "i", ticks: 7200000000, date: Date(timeIntervalSince1970: 1000))
+        let request = await transport.last()
+        let body = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        XCTAssertEqual(request.url?.path, "/jellyfin/UserItems/i/UserData")
+        XCTAssertEqual(body["PlaybackPositionTicks"] as? Int64, 7200000000)
+        XCTAssertNotNil(body["LastPlayedDate"])
+        XCTAssertNil(body["IsFavorite"]); XCTAssertNil(body["Played"]); XCTAssertNil(body["PlayCount"])
+        try await client(transport).savePosition(user: "u", item: "i", ticks: 100, completed: true)
+        let completed = await transport.last()
+        let values = try JSONSerialization.jsonObject(with: completed.httpBody!) as! [String: Any]
+        XCTAssertEqual(values["Played"] as? Bool, true)
+        XCTAssertEqual(values["PlaybackPositionTicks"] as? Int, 0)
+        XCTAssertNil(values["PlayCount"])
+    }
     func source(container: String = "mp4", video: String = "h264", audio: String = "aac", width: Int = 1920) -> MediaSource {
         MediaSource(id: "fixture", container: container, streams: [.init(type: "Video", codec: video, width: width, range: "SDR"), .init(type: "Audio", codec: audio)])
     }
@@ -109,6 +125,16 @@ final class CoreTests: XCTestCase {
         for _ in 0..<8 { XCTAssertFalse(cancelled.tick()) }
         XCTAssertEqual(SessionEvent.ticks(.nan), 0)
         XCTAssertEqual(SessionEvent.ticks(.infinity), 0)
+    }
+    func testTrustedSegmentsOnly() throws {
+        let json = "{\"Id\":\"s\",\"ItemId\":\"i\",\"Type\":\"Intro\",\"StartTicks\":100000000,\"EndTicks\":200000000}"
+        let segment = try JSONDecoder().decode(MediaSegment.self, from: Data(json.utf8))
+        XCTAssertTrue(segment.active(item: "i", seconds: 15))
+        XCTAssertFalse(segment.active(item: "other", seconds: 15))
+        XCTAssertFalse(segment.active(item: "i", seconds: 20))
+        XCTAssertFalse(segment.active(item: "i", seconds: .nan))
+        var invalid = segment; invalid.EndTicks = 0
+        XCTAssertFalse(invalid.active(item: "i", seconds: 15))
     }
     func testDiagnosticsAllowlistAndOfflineIsolation() throws {
         let secret = "https://private.invalid/title?api_key=secret"

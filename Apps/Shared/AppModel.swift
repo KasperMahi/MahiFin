@@ -23,15 +23,15 @@ import MahiFinCore
             history = try HistoryQueue(disk: disk)
             deviceID = try disk.load(String.self, name: "device.json") ?? UUID().uuidString
             try disk.save(deviceID, name: "device.json")
+            #if os(iOS)
+            downloads = try DownloadManager(root: root.appendingPathComponent("Downloads"))
+            #endif
             accounts = try disk.load([Account].self, name: "accounts.json") ?? []
             let last = try disk.load(String.self, name: "active.json")
             #if os(tvOS)
             active = ProfilePolicy.launch(accounts: accounts, last: last, television: true)
             #else
             active = ProfilePolicy.launch(accounts: accounts, last: last, television: false)
-            #endif
-            #if os(iOS)
-            downloads = try DownloadManager(root: root.appendingPathComponent("Downloads"))
             #endif
     }
     func client(for account: Account? = nil) throws -> JellyfinClient {
@@ -83,14 +83,13 @@ import MahiFinCore
                 let current = try await api.item(user: account.userID, id: event.item)
                 let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
                 let serverDate = current.UserData?.LastPlayedDate.flatMap { formatter.date(from: $0) ?? ISO8601DateFormatter().date(from: $0) }
+                let applied = serverDate.map { abs($0.timeIntervalSince(event.occurred)) < 0.001 } == true
+                    && (event.completed ? current.UserData?.Played == true : current.UserData?.PlaybackPositionTicks == event.ticks)
+                if applied { try await history.acknowledge(event); continue }
                 let resolution = HistoryConflict.resolve(event, serverDate: serverDate, now: Date())
                 if resolution == .conflict { throw ClientError.conflict }
                 if resolution == .upload {
-                    try await api.savePosition(user: account.userID, item: event.item, ticks: event.ticks)
-                    // Avoid repeated mark-played calls (which increment counts).
-                    if event.completed && current.UserData?.Played != true {
-                        try await api.setPlayed(user: account.userID, item: event.item, played: true, date: event.occurred)
-                    }
+                    try await api.savePosition(user: account.userID, item: event.item, ticks: event.ticks, date: event.occurred, completed: event.completed)
                 }
                 try await history.acknowledge(event)
             } catch {

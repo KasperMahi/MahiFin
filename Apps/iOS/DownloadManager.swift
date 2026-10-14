@@ -66,10 +66,13 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             guard let self, let data else { return }
             // Resume data can contain authorization headers; protected storage, excluded from backup.
             let url = self.root.appendingPathComponent(id.uuidString + ".resume")
-            try? data.write(to: url, options: .atomic)
-            try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: url.path)
-            var protected = url; var values = URLResourceValues(); values.isExcludedFromBackup = true
-            try? protected.setResourceValues(values)
+            DispatchQueue.main.async {
+                guard self.records.contains(where: { $0.id == id && $0.state == .paused }) else { return }
+                try? data.write(to: url, options: .atomic)
+                try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: url.path)
+                var protected = url; var values = URLResourceValues(); values.isExcludedFromBackup = true
+                try? protected.setResourceValues(values)
+            }
         })
     }
     func pause(account: String) { for record in records where record.account == account { pause(id: record.id) } }
@@ -97,6 +100,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         guard let id = downloadTask.taskDescription.flatMap(UUID.init(uuidString:)), let index = records.firstIndex(where: { $0.id == id }) else { return }
+        var movedFile: URL?
         do {
             guard let response = downloadTask.response as? HTTPURLResponse, response.statusCode == 200 else { throw ClientError.invalidResponse }
             let containers: Set<String> = ["mp4", "mov", "m4v"]
@@ -105,13 +109,17 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             let destination = root.appendingPathComponent(filename)
             if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
             try FileManager.default.moveItem(at: location, to: destination)
+            movedFile = destination
             try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: destination.path)
             var protected = destination; var values = URLResourceValues(); values.isExcludedFromBackup = true
             try protected.setResourceValues(values)
             let size = (try destination.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
             guard size > 0, records[index].expected <= 0 || size == records[index].expected else { throw ClientError.invalidResponse }
             records[index].filename = filename; records[index].state = .complete; records[index].received = size
-        } catch { records[index].state = .failed; records[index].failure = "storage-or-response" }
+        } catch {
+            if let movedFile { try? FileManager.default.removeItem(at: movedFile) }
+            records[index].state = .failed; records[index].failure = "storage-or-response"
+        }
         persist()
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {

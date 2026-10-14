@@ -90,6 +90,11 @@ public struct JellyfinClient: Sendable {
         return try JSONDecoder().decode(AuthResponse.self, from: data)
     }
     public func logout() async throws { _ = try await execute("Sessions/Logout", method: "POST") }
+    public func user(id: String) async throws -> User { try await get(User.self, "Users/\(id)") }
+    public func segments(item: String) async throws -> [MediaSegment] {
+        do { return try await get(SegmentPage.self, "MediaSegments/\(item)").Items }
+        catch ClientError.http(404) { return [] }
+    }
     public func items(user: String, route: CatalogRoute, filter: CatalogFilter = .init(), start: Int = 0) async throws -> ItemPage {
         var query = ["UserId": user, "Recursive": "true", "Fields": "Overview,MediaSources,Genres,People", "EnableUserData": "true", "Limit": "60", "StartIndex": String(start)]
         var path = "Items"
@@ -140,8 +145,15 @@ public struct JellyfinClient: Sendable {
         guard ["Playing", "Playing/Progress", "Playing/Stopped"].contains(endpoint) else { throw ClientError.invalidResponse }
         _ = try await execute("Sessions/" + endpoint, method: "POST", body: JSONEncoder().encode(event))
     }
-    public func savePosition(user: String, item: String, ticks: Int64) async throws {
-        let body = try JSONSerialization.data(withJSONObject: ["PlaybackPositionTicks": ticks])
+    public func savePosition(user: String, item: String, ticks: Int64, date: Date? = nil, completed: Bool = false) async throws {
+        var values: [String: Any] = ["PlaybackPositionTicks": completed ? 0 : ticks]
+        if let date {
+            let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            values["LastPlayedDate"] = formatter.string(from: date)
+        }
+        // Absolute state is idempotent. No play-count increment on retry and no unrelated field writes.
+        if completed { values["Played"] = true }
+        let body = try JSONSerialization.data(withJSONObject: values)
         _ = try await execute("UserItems/\(item)/UserData", method: "POST", query: ["UserId": user], body: body)
     }
     public func artwork(item: MediaItem) throws -> URLRequest? {

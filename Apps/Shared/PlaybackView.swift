@@ -21,6 +21,8 @@ struct NativePlayer: UIViewControllerRepresentable {
     @Published var next: MediaItem?
     @Published var countdown = NextCountdown()
     @Published var completed = false
+    @Published var activeSegment: MediaSegment?
+    private var segments: [MediaSegment] = []
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var failureObserver: NSKeyValueObservation?
@@ -44,6 +46,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         generation = UUID()
         let currentGeneration = generation
         stopped = false; completed = false; next = nil; countdown = .init(); loading = true; failure = nil
+        activeSegment = nil; segments = []
         self.item = item; self.model = model; account = model.active; lastReport = -15
         guard let account else { failure = NSLocalizedString("error.auth", comment: ""); loading = false; return }
         do {
@@ -80,6 +83,12 @@ struct NativePlayer: UIViewControllerRepresentable {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
             self.player = player
+            if online, let api {
+                segments = (try? await api.segments(item: item.Id)) ?? []
+                if let preferences = try? await api.user(id: account.userID).Configuration {
+                    await apply(preferences, asset: asset, item: playerItem)
+                }
+            }
             if resume > 0 { await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) }
             if online, let api {
                 try await api.report(SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing")
@@ -92,7 +101,11 @@ struct NativePlayer: UIViewControllerRepresentable {
                 Task { @MainActor in await self?.checkpoint(force: true) }
             }
             timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { [weak self] _ in
-                Task { @MainActor in await self?.checkpoint(force: false) }
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.activeSegment = self.segments.first { $0.active(item: self.item?.Id ?? "", seconds: self.player?.currentTime().seconds ?? 0) }
+                    await self.checkpoint(force: false)
+                }
             }
             endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
                 Task { @MainActor in await self?.ended() }
@@ -131,6 +144,31 @@ struct NativePlayer: UIViewControllerRepresentable {
         player = nil
     }
     func cancelNext() { countdown.cancel(); countdownTask?.cancel(); next = nil }
+    func skipSegment() {
+        guard let segment = activeSegment else { return }
+        player?.seek(to: CMTime(seconds: Double(segment.EndTicks) / 10_000_000, preferredTimescale: 600))
+    }
+    private func apply(_ preferences: UserPreferences, asset: AVAsset, item: AVPlayerItem) async {
+        func language(_ value: String?) -> String? {
+            guard let value else { return nil }
+            return ["eng": "en", "dan": "da" ][value] ?? value
+        }
+        if preferences.PlayDefaultAudioTrack == false, let preferred = language(preferences.AudioLanguagePreference),
+           let group = try? await asset.loadMediaSelectionGroup(for: .audible),
+           let option = group.options.first(where: { $0.extendedLanguageTag?.hasPrefix(preferred) == true }) {
+            item.select(option, in: group)
+        }
+        if let group = try? await asset.loadMediaSelectionGroup(for: .legible) {
+            if preferences.SubtitleMode == "None" { item.select(nil, in: group) }
+            else if preferences.SubtitleMode == "OnlyForced" {
+                item.select(group.options.first(where: { $0.hasMediaCharacteristic(.containsOnlyForcedSubtitles) }), in: group)
+            } else if let preferred = language(preferences.SubtitleLanguagePreference),
+                      let option = group.options.first(where: { $0.extendedLanguageTag?.hasPrefix(preferred) == true }) {
+                item.select(option, in: group)
+            }
+        }
+        // External/image subtitles not exposed by the native asset remain unsupported; no burn-in request.
+    }
     private func failed() {
         player?.pause(); loading = false
         failure = NSLocalizedString("player.unsupported", comment: "")
@@ -179,6 +217,9 @@ struct PlaybackView: View {
             if session.loading { ProgressView("player.loading") }
             if let failure = session.failure { Text(failure).padding(); Button("retry") { Task { await session.open(item, model: model, localURL: localURL, localSource: localSource) } } }
             if let player = session.player { NativePlayer(player: player).ignoresSafeArea(edges: .bottom) }
+            if let segment = session.activeSegment {
+                Button(segment.Type == "Intro" ? "player.skipIntro" : "player.skipCredits") { session.skipSegment() }
+            }
             if let next = session.next {
                 Text(next.Name)
                 Text(String(session.countdown.remaining)).font(.largeTitle.monospacedDigit())

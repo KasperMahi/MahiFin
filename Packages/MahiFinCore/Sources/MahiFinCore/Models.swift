@@ -32,7 +32,28 @@ public struct ServerInfo: Codable, Sendable {
 public struct User: Codable, Sendable {
     public var Id: String
     public var Name: String
+    public var Configuration: UserPreferences?
 }
+public struct UserPreferences: Codable, Sendable {
+    public var AudioLanguagePreference: String?
+    public var PlayDefaultAudioTrack: Bool?
+    public var SubtitleLanguagePreference: String?
+    public var SubtitleMode: String?
+}
+public struct MediaSegment: Codable, Identifiable, Sendable {
+    public var id: String { Id }
+    public var Id: String
+    public var ItemId: String
+    public var `Type`: String
+    public var StartTicks: Int64
+    public var EndTicks: Int64
+    public func active(item: String, seconds: Double) -> Bool {
+        guard ItemId == item, ["Intro", "Outro"].contains(Type), StartTicks >= 0, EndTicks > StartTicks, seconds.isFinite else { return false }
+        let ticks = SessionEvent.ticks(seconds)
+        return ticks >= StartTicks && ticks < EndTicks
+    }
+}
+public struct SegmentPage: Codable, Sendable { public var Items: [MediaSegment] }
 public struct AuthResponse: Codable, Sendable {
     public var AccessToken: String
     public var User: User

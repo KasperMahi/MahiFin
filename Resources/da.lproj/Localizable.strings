@@ -58,6 +58,8 @@
 "player.loading" = "Forbereder original afspilning…";
 "player.unsupported" = "Original afspilning kunne ikke starte. Denne version understøtter filer kompatible med den indbyggede afspiller. Remux, lydkonvertering, videokonvertering og alternativ lokal afspiller er endnu ikke integreret. Der blev ikke anmodet om videokonvertering. Kontroller codecs, adgang og netværk.";
 "player.cancelNext" = "Annuller næste afsnit";
+"player.skipIntro" = "Spring intro over";
+"player.skipCredits" = "Spring rulletekster over";
 "player.airplay" = "Vælg AirPlay-enhed";
 "download.original" = "Download original";
 "download.warning" = "Originalfilen bevares, indtil du sletter den. Denne version accepterer kun formater understøttet af den indbyggede afspiller. Lager, baggrundsoverførsel og offlineafspilning skal testes på en enhed. Som standard kun Wi-Fi.";

@@ -263,7 +263,7 @@ struct DetailView: View {
             guard let account = model.active else { return }
             let api = try model.client()
             let info = try await api.playbackInfo(user: account.userID, item: item.Id)
-            guard let source = info.MediaSources.first else { throw ClientError.unavailable }
+            guard info.MediaSources.count == 1, let source = info.MediaSources.first else { throw ClientError.unavailable }
             // Only native-playable originals accepted while local alternative engine is unavailable.
             guard PlaybackPolicy.decide(source, device: .init()).route == .direct else { throw ClientError.unavailable }
             try model.downloads.enqueue(account: account, item: current, source: source, request: api.originalRequest(item: item.Id), cellular: model.cellularDownloads)

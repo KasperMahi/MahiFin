@@ -58,6 +58,8 @@
 "player.loading" = "Preparing original playback…";
 "player.unsupported" = "Original playback could not start. This build supports native-compatible files. Remux, audio conversion, video conversion and the alternative local engine are not integrated yet. No video conversion was requested. Check codecs, access permissions and the network.";
 "player.cancelNext" = "Cancel next episode";
+"player.skipIntro" = "Skip intro";
+"player.skipCredits" = "Skip credits";
 "player.airplay" = "Choose AirPlay output";
 "download.original" = "Download original";
 "download.warning" = "The original file stays until you delete it. Only formats supported by the native player are accepted in this build. Storage, background transfer and offline playback require device validation. Wi-Fi only by default.";
