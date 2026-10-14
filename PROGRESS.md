@@ -10,8 +10,8 @@ Resume from this checklist and Git history. Never equate implemented with tested
 - [x] B2: Native iOS/tvOS project, onboarding, profiles, catalog, search and details (compile verification pending).
 - [x] B3: Original-only AVPlayer, durable progress and cancellable next episode wired (compile/hardware verification pending; conversion integrations blocked).
 - [x] B4: iPhone background original download and offline playback/history wiring, AirPlay; honest Cast/alternative-engine boundaries (compile/device verification pending).
-- [x] C: Pinned macOS CI; compile both targets and run tests; repair failures (passed at 475548a; final hardening rerun pending).
-- [ ] D: Acceptance status matrix, reproducible setup/manual tests, private-repository PR.
+- [x] C: Pinned macOS CI; compile both targets and run tests; repair failures (final code 97faa54 passed run 38620804616).
+- [x] D: Acceptance status matrix, reproducible setup/manual tests, private-repository draft PR #1.
 
 ## Verification and blockers
 
@@ -47,3 +47,16 @@ Final correctness review: added cancellation generation guards and serialized in
 Playback review follow-up: detach a stopped player before awaiting network work; guard overlapping open operations; invalidate completion lookups on navigation/stop so they cannot start hidden autoplay. `git diff --check` passes. No secrets/real service addresses found in application source; only documented token construction in request headers/in-memory AVPlayer URL. Awaiting smoke result before pushing this final snapshot to avoid cancelling useful UI validation.
 
 CI iteration 6: run 38619487238 succeeded at f0428f7: all 14 core tests, both unsigned builds and genuine iOS/tvOS onboarding XCUITest passed. Both OS 18 runtimes are present. Security/lifecycle/API-contract additions after that commit are ready for final rerun (17 core tests authored). Diagnostics now include allowlisted reason/HDR and bounded numeric bitrate/width without private metadata. Final push next; no later code edits planned unless validation exposes a failure.
+
+Final CI: [run 38620804616](https://github.com/KasperMahi/MahiFin/actions/runs/38620804616) succeeded at **97faa54**. 17 core tests, unsigned iOS and tvOS builds, 3 iOS and 2 tvOS onboarding tests passed on OS 18.5/Xcode 16.4. Local structural checks, all 33 acceptance IDs accounted for, and whitespace checks pass. Draft PR: https://github.com/KasperMahi/MahiFin/pull/1. Final handoff commit changes documentation only; executable code is identical to the tested commit. No real server or physical hardware tested.
+
+## Unfinished v1 work (resume here)
+
+- [ ] Live server 10.10/10.11/12 integration and catalog/player/download UI/lifecycle fixture expansion.
+- [ ] Alternative local playback engine and dependency/license audit; MKV/audio/seek validation.
+- [ ] Server remux and audio-only conversion execution; per-attempt explicit video consent UI + verified conversion execution. Current build issues no conversion requests.
+- [ ] Cast: probe authenticated user Configuration.CastReceiverId; validate secure receiver token contract and no-video-conversion behavior; integrate official sender SDK. Receiver source currently constructs token-bearing stream URLs; do not guess an ID or claim connection.
+- [ ] Native HDR capability/output validation; external subtitles/full Smart preferences; dedicated seasons/backdrop UI and focus/accessibility polish.
+- [ ] Physical iPhone/Apple TV: signed playback/AirPlay/background downloads/airplane mode/history; 4K/HDR/soundbar/legacy Cast matrix. Exact procedures in docs/MANUAL_TESTS.md.
+
+These are required release gates, not completed modules. The initial compileable native vertical slice and handoff milestones are complete; the full v1 product is not.
