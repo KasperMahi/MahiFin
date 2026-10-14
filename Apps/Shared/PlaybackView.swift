@@ -49,6 +49,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var playMethod = "DirectPlay"
     private var ledger = PlaybackLedger()
     private var selectedDecision: PlaybackDecision?
+    private var nativeResumePosition: Double?
 
     func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil, consent: VideoConsent? = nil) async {
         let operation = UUID(); openOperation = operation
@@ -60,6 +61,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         activeSegment = nil; segments = []
         currentTitle = item.Name; selectedDecision = nil
         consentRequest = nil; conversionActive = false; playMethod = "DirectPlay"
+        nativeResumePosition = nil
         self.item = item; self.model = model; account = model.active; lastReport = -15
         guard let account else { failure = NSLocalizedString("error.auth", comment: ""); loading = false; return }
         do {
@@ -152,6 +154,7 @@ struct NativePlayer: UIViewControllerRepresentable {
             player.allowsExternalPlayback = true
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
+            nativeResumePosition = resume
             self.player = player
             if online, let api {
                 let fetchedSegments = (try? await api.segments(item: item.Id)) ?? []
@@ -163,8 +166,13 @@ struct NativePlayer: UIViewControllerRepresentable {
             }
             try Task.checkCancellation()
             guard generation == currentGeneration, !stopped else { return }
-            if resume > 0 { await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) }
+            if resume > 0 {
+                let sought = await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                guard generation == currentGeneration, !stopped else { return }
+                guard sought else { throw ClientError.unavailable }
+            }
             guard generation == currentGeneration, !stopped else { return }
+            nativeResumePosition = nil
             if online, let api {
                 await enqueueReport(client: api, event: eventFor(item: item, seconds: resume, paused: false), endpoint: "Playing").value
             }
@@ -206,6 +214,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     func checkpoint(force: Bool) async {
         guard !stopped, !reporting, player != nil || alternative != nil, let item, let account, let model else { return }
         guard alternative?.resumePending != true else { return }
+        guard nativeResumePosition == nil else { return }
         let seconds = alternative?.seconds ?? player?.currentTime().seconds ?? 0
         let paused = alternative?.paused ?? (player?.rate == 0)
         guard seconds.isFinite else { return }
@@ -236,7 +245,8 @@ struct NativePlayer: UIViewControllerRepresentable {
         let conversionClient = conversionActive ? api : nil
         let conversionSession = sessionID
         let stoppedAlternative = alternative
-        let lastSeconds = stoppedAlternative?.historySeconds ?? stoppedPlayer?.currentTime().seconds ?? 0
+        let lastSeconds = stoppedAlternative?.historySeconds ?? nativeResumePosition ?? stoppedPlayer?.currentTime().seconds ?? 0
+        nativeResumePosition = nil
         stoppedAlternative?.stop(); alternative = nil
         player = nil // Detach before await so an older stop cannot clear a replacement player.
         if stoppedPlayer != nil || stoppedAlternative != nil, let item, let account, let model {
