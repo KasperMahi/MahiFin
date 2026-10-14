@@ -6,7 +6,7 @@ Resume from this checklist and Git history. Never equate implemented with tested
 
 - [x] Read task, product, architecture, acceptance and research documents; inspect clean starter repository.
 - [x] A: Audit dependencies and API contracts; record decisions and verification constraints.
-- [ ] B1: Shared Swift package, real Jellyfin HTTP client, secure accounts, fixture tests.
+- [x] B1: Shared Swift package, real Jellyfin HTTP client, secure accounts, fixture tests (execution pending CI).
 - [ ] B2: Native iOS/tvOS project, onboarding, profiles, catalog, search and details.
 - [ ] B3: Consent-safe playback, AVPlayer, durable progress and cancellable next episode.
 - [ ] B4: iPhone background original downloads, offline playback/history sync, AirPlay; honest Cast/alternative-engine boundaries.
@@ -25,3 +25,5 @@ Resume from this checklist and Git history. Never equate implemented with tested
 Planning: required documents read; no code tests exist yet. This file created before implementation.
 
 Audit: private repository/push permissions verified. Reviewed upstream sources and macOS runner manifest; choose Xcode 16.4 on macOS 15. No runtime dependency copied. API fixtures/tests are next; no Swift execution available locally.
+
+B1: Added core request boundary/models, HTTPS and redirect restrictions, profile policy, durable history, download manifest, conservative playback policy and diagnostic allowlist. Ten meaningful XCTest cases with invented fixture metadata are authored. Tests NOT executed on Windows; Apple compiler/CI remains pending. Native app wiring is in progress and included in this working snapshot as requested; it does not yet have a generated project.
