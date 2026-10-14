@@ -28,6 +28,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 guard let self else { return }
                 for task in activeTasks {
                     guard let id = task.taskDescription.flatMap(UUID.init(uuidString:)), let download = task as? URLSessionDownloadTask else { task.cancel(); continue }
+                    guard self.records.contains(where: { $0.id == id && $0.taskID == task.taskIdentifier && $0.state != .complete }) else { task.cancel(); continue }
                     self.tasks[id] = download
                 }
                 for index in self.records.indices where self.records[index].state == .downloading && self.tasks[self.records[index].id] == nil {
@@ -99,7 +100,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard records[index].taskID == downloadTask.taskIdentifier else { return }
         let oldMegabyte = records[index].received / 1_000_000
         records[index].received = totalBytesWritten
-        if totalBytesExpectedToWrite > 0 { records[index].expected = totalBytesExpectedToWrite }
+        // Preserve the authoritative original size; a short response cannot redefine success.
         if oldMegabyte != totalBytesWritten / 1_000_000 { persist() }
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
@@ -119,7 +120,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             var protected = destination; var values = URLResourceValues(); values.isExcludedFromBackup = true
             try protected.setResourceValues(values)
             let size = (try destination.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
-            guard size > 0, records[index].expected <= 0 || size == records[index].expected else { throw ClientError.invalidResponse }
+            guard DownloadIntegrity.isComplete(bytes: size, originalSize: records[index].source.Size, responseSize: downloadTask.countOfBytesExpectedToReceive) else { throw ClientError.invalidResponse }
             records[index].filename = filename; records[index].state = .complete; records[index].received = size
         } catch {
             if let movedFile { try? FileManager.default.removeItem(at: movedFile) }

@@ -60,3 +60,14 @@ Final CI: [run 38620804616](https://github.com/KasperMahi/MahiFin/actions/runs/3
 - [ ] Physical iPhone/Apple TV: signed playback/AirPlay/background downloads/airplane mode/history; 4K/HDR/soundbar/legacy Cast matrix. Exact procedures in docs/MANUAL_TESTS.md.
 
 These are required release gates, not completed modules. The initial compileable native vertical slice and handoff milestones are complete; the full v1 product is not.
+
+## Continuation milestones — existing branch / draft PR #1
+
+- [ ] R0: Review correctness, fix completed offline resume and original-size validation; regression tests + both CI builds.
+- [ ] R1: Pin licensed official VLCKit, wire local/streaming alternative player, controls/seek/tracks; synthetic-media tests + both CI builds.
+- [ ] R2: Consent-scoped server remux/audio conversion/video execution and request fixtures.
+- [ ] R3: Native 4K/HDR capability probing and conservative profile tests; physical output remains pending.
+- [ ] R4: Official iOS Cast SDK + Jellyfin receiver protocol/auth and controls, consent safety, no credential logging.
+- [ ] R5: Offline/track/UI improvements, realistic fixtures and playback lifecycle/UI expansion.
+
+Continuation audit: clean `codex/initial-implementation` at 820cd45; draft PR #1 open/unmerged. Existing work retained. Found completed offline events resuming at duration and download HTTP length replacing authoritative original size. Also reviewing stale completion ordering and conflict queue head-of-line blocking. Official VLCKit revision 2e0868f5ed40fe59cd92f377645fdcc260c6e759 declares iOS/tvOS 12; pinned nightly binary/API must be compiler-tested before enabling capability. SwiftVLC main requires tools 6.3, incompatible with Xcode 16.4 unchanged. No dependency enabled yet.

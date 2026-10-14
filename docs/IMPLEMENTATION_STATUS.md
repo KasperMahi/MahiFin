@@ -49,6 +49,8 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 
 ## Remaining prioritized work
 
+Continuation R0 review: completed local replay starts at zero; download integrity requires probed original size and rejects a truncated HTTP length. Regression tests authored; fresh CI pending. Orphan background tasks are cancelled during reconciliation. Alternative engine audit is in progress; no new compatibility claim yet.
+
 1. Expand simulator UI smoke beyond onboarding and add player/download lifecycle tests. Final code/compiler/test iteration is green at the run above.
 2. Live API fixtures/integration across 10.10/10.11/12, metadata/permissions/Quick Connect/media profiles.
 3. Real native-compatible playback/offline/AirPlay acceptance on iPhone and Apple TV; trusted subtitle/marker behavior.

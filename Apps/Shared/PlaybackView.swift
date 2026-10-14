@@ -57,9 +57,7 @@ struct NativePlayer: UIViewControllerRepresentable {
             let url: URL
             var resume = item.position
             let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
-            if let pending {
-                resume = Double(pending.ticks) / 10_000_000
-            }
+            resume = ResumePosition.local(item: item, pending: pending)
             if let localURL, let localSource {
                 online = false; api = nil; source = localSource; url = localURL
             } else {
