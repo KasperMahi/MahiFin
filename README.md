@@ -47,6 +47,6 @@ Downloads accept one unambiguous original source with known size and a native-co
 - HDR is conservatively blocked pending verified route capability; Dolby Vision, TrueHD/DTS, external subtitles, full Jellyfin subtitle preference semantics and passthrough are not guaranteed.
 - Apple builds do not prove actual Jellyfin compatibility, remote focus polish, background file transfer, 4K/HDR, soundbar sync or AirPlay.
 - Durable offline replay uses partial absolute user-data writes. Server/client clock ambiguity and a fetch/post concurrency window remain documented limits; replay does not increment play counts.
-- Simulator UI automation, comprehensive playback lifecycle tests and hardware validation remain additional gates.
+- Native onboarding UI smoke tests run on OS 18 iOS/tvOS simulators. Catalog/playback/download UI coverage, comprehensive lifecycle tests and hardware validation remain additional gates.
 
 Resume from [PROGRESS.md](PROGRESS.md) and Git history. [Implementation decisions](docs/IMPLEMENTATION_DECISIONS.md), [acceptance status](docs/IMPLEMENTATION_STATUS.md), [exact manual repros](docs/MANUAL_TESTS.md), and the original [product contract](docs/PRODUCT_SPEC.md) document remaining work.

@@ -139,7 +139,8 @@ struct NativePlayer: UIViewControllerRepresentable {
             loading = false; player.play()
         } catch {
             guard generation == currentGeneration, !stopped else { return }
-            loading = false; failed()
+            let issue = (error as? ClientError) == .unauthorized ? "auth" : ((error as? ClientError) == .unavailable ? "unsupported" : "network")
+            loading = false; failed(issue: issue)
         }
     }
     func checkpoint(force: Bool) async {
@@ -212,10 +213,11 @@ struct NativePlayer: UIViewControllerRepresentable {
         }
         // External/image subtitles not exposed by the native asset remain unsupported; no burn-in request.
     }
-    private func failed() {
+    private func failed(issue: String = "player") {
         player?.pause(); loading = false
-        failure = NSLocalizedString("player.unsupported", comment: "")
-        model?.diagnostic = DiagnosticReport(source: source, decision: source.map { PlaybackPolicy.decide($0, device: .init()) }, issue: "player")
+        let key = issue == "auth" ? "error.auth" : (issue == "network" ? "error.network" : "player.unsupported")
+        failure = NSLocalizedString(key, comment: "")
+        model?.diagnostic = DiagnosticReport(source: source, decision: source.map { PlaybackPolicy.decide($0, device: .init()) }, issue: issue)
     }
     private func ended() async {
         guard !completed, !stopped, let item, let account, let api, let model else {

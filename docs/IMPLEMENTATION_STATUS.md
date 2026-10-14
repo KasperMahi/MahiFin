@@ -4,9 +4,9 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 
 ## Verification evidence
 
-- Xcode 16.4 / Swift 6.1.2 on GitHub macOS 15. [Run 38617972775](https://github.com/KasperMahi/MahiFin/actions/runs/38617972775) passed package tests and both unsigned simulator builds at commit `475548a` (12 tests). Later hardening/tests require final rerun.
+- Xcode 16.4 / Swift 6.1.2 on GitHub macOS 15. [Run 38619487238](https://github.com/KasperMahi/MahiFin/actions/runs/38619487238) passed 14 core tests, both unsigned simulator builds and iOS/tvOS onboarding XCUITest at commit `f0428f7`. Final later hardening/API-contract tests require rerun (17 core tests authored).
 - Windows Python structural checks passed: deterministic project, target minimums, fixture parsing, localization key parity. No Swift/Xcode installed locally.
-- Simulator runtimes are available. No UI smoke tests have run yet. No real server/account/media/hardware supplied.
+- OS 18 simulator runtimes available. Onboarding EN/DA, empty-credential guards (both platforms), and insecure-server rejection (iOS) passed. Catalog/player/download UI and real server/account/media/hardware remain pending.
 - No runtime third-party packages; provenance in THIRD_PARTY_NOTICES.md. All test metadata is invented, no media binaries.
 
 ## Acceptance matrix
@@ -41,15 +41,15 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 | OFF-02 | Download view opens local AVURLAsset without Jellyfin lookup; local queue resume | Yes | Local manifest account/path validation; full playback pending | Airplane mode before navigation |
 | OFF-03 | Files retained, explicit deletion, resume-data cleanup | Yes | Manifest model only | Relaunch/watch/delete disk verification |
 | OFF-04 | Owner-filtered view/path lookup; logout pauses transfer | Yes | Account isolation queue/path tests | B cannot access A transfer/assets |
-| OFF-05 | Deterministic item/account queue, absolute partial updates, clock conflict retention; no cross-client atomic CAS | Yes | Queue/conflict tests; full sync tests added pending rerun | Reconnect/retry/two devices/skew |
+| OFF-05 | Deterministic item/account queue, absolute partial updates, clock conflict retention; no cross-client atomic CAS | Yes | Queue, completion, clock conflict and lost-response sync tests pass | Reconnect/retry/two devices/skew |
 | OFF-06 | Restore task mapping, pause/resume/retry/failure and storage categories; force-quit follows OS | Yes | Actual URLSession delegate tests pending | Kill/lock/low-space/401/partial file |
 | DIAG-01 | Structured allowlist excludes URLs/titles/tokens/paths; export on iOS, display tvOS | Yes | Malicious diagnostic input test | Share/export and player-category review |
 | CI-01 | Deterministic checked-in two-target project, pinned unsigned macOS build | Yes | Both builds passed run linked above | No physical signing required |
-| CI-02 | Core XCTest fixtures and source provenance | Yes | 12 tests passed; latest additions pending rerun | License audit on future SDK additions |
+| CI-02 | Core XCTest fixtures, onboarding XCUITest and source provenance | Yes | 14 core + both-platform onboarding tests passed; 3 new API tests pending rerun | License audit on future SDK additions |
 
 ## Remaining prioritized work
 
-1. Finish final compiler/test iteration and playback/offline race review; add simulator UI smoke coverage.
+1. Finish final compiler/test iteration; expand simulator UI smoke beyond onboarding and add player/download lifecycle tests.
 2. Live API fixtures/integration across 10.10/10.11/12, metadata/permissions/Quick Connect/media profiles.
 3. Real native-compatible playback/offline/AirPlay acceptance on iPhone and Apple TV; trusted subtitle/marker behavior.
 4. Integrate licensed alternative engine/remux/audio conversion with exact no-video-copy safeguards; explicit per-attempt video consent before any conversion request.

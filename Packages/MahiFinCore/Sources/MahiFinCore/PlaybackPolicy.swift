@@ -76,6 +76,10 @@ public struct DiagnosticReport: Codable, Sendable {
     public var audio: String
     public var container: String
     public var issue: String
+    public var reason: String
+    public var bitrate: Int?
+    public var width: Int?
+    public var hdr: String
     public init(source: MediaSource?, decision: PlaybackDecision?, issue: String = "none") {
         // Never accept free-form server error messages, URLs, item titles or identifiers.
         let codecs: Set<String> = ["h264", "hevc", "aac", "ac3", "eac3", "alac", "mp3", "dts", "truehd", "opus"]
@@ -87,6 +91,13 @@ public struct DiagnosticReport: Codable, Sendable {
         container = source?.Container.flatMap { containers.contains($0) ? $0 : nil } ?? "unknown"
         route = decision?.route.rawValue ?? "unknown"
         self.issue = ["none", "network", "auth", "player", "unsupported", "storage", "conflict"].contains(issue) ? issue : "unknown"
+        let reasons: Set<String> = ["source", "metadata", "subtitles", "video", "hdr.hardware", "container.local", "container", "audio", "original"]
+        reason = decision.map { reasons.contains($0.reason) ? $0.reason : "unknown" } ?? "unknown"
+        bitrate = source?.Bitrate.flatMap { $0 > 0 && $0 <= 1_000_000_000 ? $0 : nil }
+        let video = source?.MediaStreams?.first(where: { $0.Type == "Video" })
+        width = video?.Width.flatMap { $0 > 0 && $0 <= 16384 ? $0 : nil }
+        let ranges: Set<String> = ["SDR", "HDR10", "HDR10Plus", "HLG", "DOVIWithHDR10", "DOVIWithHLG", "DOVIWithSDR"]
+        hdr = video?.VideoRangeType.flatMap { ranges.contains($0) ? $0 : nil } ?? "unknown"
     }
     public func export() -> String { String(data: (try? JSONEncoder().encode(self)) ?? Data(), encoding: .utf8) ?? "{}" }
 }
