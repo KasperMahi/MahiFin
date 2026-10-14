@@ -6,6 +6,7 @@ public enum PlaybackRoute: String, Codable, Sendable {
 public struct PlaybackDecision: Equatable, Sendable {
     public var route: PlaybackRoute
     public var reason: String
+    public init(route: PlaybackRoute, reason: String) { self.route = route; self.reason = reason }
     public var canStart: Bool { route == .direct || route == .alternative }
 }
 public struct DeviceCapabilities: Sendable {

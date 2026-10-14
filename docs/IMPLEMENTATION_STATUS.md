@@ -55,6 +55,8 @@ R0 core tests + both unsigned builds passed run 38625217485 at 2b54fb8. R1: offi
 
 R1 first compiler run resolved binary and built Obj-C, then failed Swift imported method spelling; explicit naming repair pending rerun. R2 remux/audio-only native HLS execution uses VideoCodec=copy, no sizing/burn-in; scoped consent UI required before h264 encoding. R3 probes actual Apple HDR modes/hardware decoding; known HEVC Main10 HDR10/HLG routes only, Dolby Vision remains blocked. These additions are implemented/test-authored but compile/live/hardware evidence is pending.
 
+Iteration 2 passed 22 core tests, then failed app access to synthesized internal decision initializer (repaired). R4 official Cast SDK discovery/configured-ID/session controls are implemented but compiler/hardware evidence pending. Authentication/media load remains BLOCKED by confirmed receiver token logging and automatic conversion negotiation, rather than a guessed ID. No token envelope is transmitted. See new decision record for exact source/exit tests.
+
 1. Expand simulator UI smoke beyond onboarding and add player/download lifecycle tests. Final code/compiler/test iteration is green at the run above.
 2. Live API fixtures/integration across 10.10/10.11/12, metadata/permissions/Quick Connect/media profiles.
 3. Real native-compatible playback/offline/AirPlay acceptance on iPhone and Apple TV; trusted subtitle/marker behavior.

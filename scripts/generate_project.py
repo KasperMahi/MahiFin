@@ -30,6 +30,7 @@ targets = []
 all_refs = []
 package = obj("package", "XCLocalSwiftPackageReference", 'relativePath = Packages/MahiFinCore;')
 vlc_package = obj("vlckit-package", "XCRemoteSwiftPackageReference", 'repositoryURL = "https://github.com/videolan/vlckit.git"; requirement = {kind = revision; revision = 2e0868f5ed40fe59cd92f377645fdcc260c6e759;};')
+cast_package = obj("cast-package", "XCLocalSwiftPackageReference", 'relativePath = Packages/MahiFinCastSDK;')
 
 # Shared localized resource variant. No private artwork or media is bundled.
 languages = []
@@ -46,6 +47,7 @@ for platform, sdk, family, minimum in (("iOS", "iphoneos", "1,2", "IPHONEOS_DEPL
     paths = sorted((ROOT / "Apps" / "Shared").glob("*.swift"))
     paths += sorted((ROOT / "Apps" / "Shared").glob("*.m"))
     paths += sorted((ROOT / "Apps" / platform).glob("*.swift"))
+    paths += sorted((ROOT / "Apps" / platform).glob("*.m"))
     for path in paths:
         relative = path.relative_to(ROOT).as_posix()
         file_type = "sourcecode.c.objc" if path.suffix == ".m" else "sourcecode.swift"
@@ -57,7 +59,13 @@ for platform, sdk, family, minimum in (("iOS", "iphoneos", "1,2", "IPHONEOS_DEPL
     linked_core = obj(name + "link", "PBXBuildFile", f'productRef = {product_dep};')
     vlc_product = obj(name + "vlc", "XCSwiftPackageProductDependency", f'package = {vlc_package}; productName = VLCKit;')
     linked_vlc = obj(name + "vlclink", "PBXBuildFile", f'productRef = {vlc_product};')
-    frameworks = obj(name + "frameworks", "PBXFrameworksBuildPhase", f'buildActionMask = 2147483647; files = ({linked_core}, {linked_vlc}); runOnlyForDeploymentPostprocessing = 0;')
+    framework_files = [linked_core, linked_vlc]
+    package_products = [product_dep, vlc_product]
+    if platform == "iOS":
+        cast_product = obj(name + "cast", "XCSwiftPackageProductDependency", f'package = {cast_package}; productName = MahiFinCastSDK;')
+        framework_files.append(obj(name + "castlink", "PBXBuildFile", f'productRef = {cast_product};'))
+        package_products.append(cast_product)
+    frameworks = obj(name + "frameworks", "PBXFrameworksBuildPhase", f'buildActionMask = 2147483647; files = {array(framework_files)}; runOnlyForDeploymentPostprocessing = 0;')
     strings_build = obj(name + "stringsbuild", "PBXBuildFile", f'fileRef = {resource};')
     fixture_build = obj(name + "fixturebuild", "PBXBuildFile", f'fileRef = {fixture_ref};')
     resources = obj(name + "resources", "PBXResourcesBuildPhase", f'buildActionMask = 2147483647; files = ({strings_build}, {fixture_build}); runOnlyForDeploymentPostprocessing = 0;')
@@ -77,7 +85,7 @@ for platform, sdk, family, minimum in (("iOS", "iphoneos", "1,2", "IPHONEOS_DEPL
         }
         configs.append(obj(name + config, "XCBuildConfiguration", f'buildSettings = {settings(values)}; name = {config};'))
     configs_ref = obj(name + "configs", "XCConfigurationList", f'buildConfigurations = {array(configs)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
-    target = obj(name + "target", "PBXNativeTarget", f'buildConfigurationList = {configs_ref}; buildPhases = ({sources}, {frameworks}, {resources}); buildRules = (); dependencies = (); name = {quote(name)}; packageProductDependencies = ({product_dep}, {vlc_product}); productName = {quote(name)}; productReference = {product}; productType = "com.apple.product-type.application";')
+    target = obj(name + "target", "PBXNativeTarget", f'buildConfigurationList = {configs_ref}; buildPhases = ({sources}, {frameworks}, {resources}); buildRules = (); dependencies = (); name = {quote(name)}; packageProductDependencies = {array(package_products)}; productName = {quote(name)}; productReference = {product}; productType = "com.apple.product-type.application";')
     targets.append(target)
     test_name = name + "-UITests"
     test_file = obj("uitest-file", "PBXFileReference", 'lastKnownFileType = sourcecode.swift; path = Tests/UITests/OnboardingTests.swift; sourceTree = SOURCE_ROOT;')
@@ -113,6 +121,8 @@ for platform, sdk, family, minimum in (("iOS", "iphoneos", "1,2", "IPHONEOS_DEPL
     plist = {"CFBundleDevelopmentRegion": "en", "CFBundleExecutable": "$(EXECUTABLE_NAME)", "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)", "CFBundleInfoDictionaryVersion": "6.0", "CFBundleName": "MahiFin", "CFBundlePackageType": "APPL", "CFBundleShortVersionString": "$(MARKETING_VERSION)", "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)"}
     if platform == "iOS":
         plist.update({"UILaunchScreen": {}, "UIBackgroundModes": ["audio"], "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]})
+        # Stable/unstable registered IDs verified from Jellyfin's default-receiver migration; still select configured user ID at runtime.
+        plist.update({"NSLocalNetworkUsageDescription": "Find the Cast receiver you choose on your local network.", "NSBonjourServices": ["_googlecast._tcp", "_F007D354._googlecast._tcp", "_6F511C87._googlecast._tcp"]})
     (ROOT / "Apps" / platform).mkdir(exist_ok=True)
     (ROOT / "Apps" / platform / "Info.plist").write_bytes(plistlib.dumps(plist, sort_keys=True))
 
@@ -122,7 +132,7 @@ configs = []
 for config in ("Debug", "Release"):
     configs.append(obj("project-" + config, "XCBuildConfiguration", 'buildSettings = {CLANG_ENABLE_MODULES = YES;}; name = ' + config + ';'))
 config_list = obj("project-configs", "XCConfigurationList", f'buildConfigurations = {array(configs)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
-project = obj("project", "PBXProject", f'attributes = {{LastUpgradeCheck = 1640;}}; buildConfigurationList = {config_list}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, da, Base); mainGroup = {main_group}; packageReferences = ({package}, {vlc_package}); productRefGroup = {product_group}; projectDirPath = ""; projectRoot = ""; targets = {array(targets)};')
+project = obj("project", "PBXProject", f'attributes = {{LastUpgradeCheck = 1640;}}; buildConfigurationList = {config_list}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, da, Base); mainGroup = {main_group}; packageReferences = ({package}, {vlc_package}, {cast_package}); productRefGroup = {product_group}; projectDirPath = ""; projectRoot = ""; targets = {array(targets)};')
 text = "// !$*UTF8*$!\n{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n"
 text += "\n".join(f"{key} = {{ {objects[key]} }};" for key in sorted(objects))
 text += f"\n}}; rootObject = {project}; }}\n"

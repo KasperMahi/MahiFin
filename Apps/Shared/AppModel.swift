@@ -16,6 +16,7 @@ import MahiFinCore
     private var syncing = false
     #if os(iOS)
     let downloads: DownloadManager
+    let cast = CastModel()
     #endif
 
     init() throws {
@@ -51,10 +52,16 @@ import MahiFinCore
     func select(_ account: Account) throws {
         guard accounts.contains(account), try tokens.read(account: account.id) != nil else { throw ClientError.unauthorized }
         try disk.save(account.id, name: "active.json")
+        #if os(iOS)
+        if active?.id != account.id { cast.disconnect() }
+        #endif
         active = account
         Task { await sync() }
     }
     func forget(_ account: Account) async {
+        #if os(iOS)
+        if active?.id == account.id { cast.disconnect() }
+        #endif
         do {
             // Revoke first when reachable, but local logout remains possible offline.
             if let client = try? client(for: account) { try? await client.logout() }

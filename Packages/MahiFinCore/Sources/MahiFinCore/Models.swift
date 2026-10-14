@@ -35,6 +35,7 @@ public struct User: Codable, Sendable {
     public var Configuration: UserPreferences?
 }
 public struct UserPreferences: Codable, Sendable {
+    public var CastReceiverId: String?
     public var AudioLanguagePreference: String?
     public var PlayDefaultAudioTrack: Bool?
     public var SubtitleLanguagePreference: String?

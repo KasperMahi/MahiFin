@@ -294,7 +294,7 @@ struct SettingsView: View {
             Section("nav.downloads") {
                 Toggle("download.cellular", isOn: Binding(get: { model.cellularDownloads }, set: { model.setCellularDownloads($0) }))
             }
-            Section("settings.cast") { Text("settings.castBlocked") }
+            Section("settings.cast") { CastView(cast: model.cast) }
             #endif
             Section("settings.advanced") {
                 Button("settings.sync") { Task { await model.sync() } }

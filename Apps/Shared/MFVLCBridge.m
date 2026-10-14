@@ -3,8 +3,8 @@
 #include <math.h>
 
 @interface MFVLCBridge () <VLCMediaPlayerDelegate>
-@property(nonatomic) VLCMediaPlayer *engine;
-@property(nonatomic, readwrite) UIView *surface;
+@property(nonatomic, strong) VLCMediaPlayer *engine;
+@property(nonatomic, strong, readwrite) UIView *surface;
 @property(nonatomic, readwrite) double duration;
 @property(nonatomic) double lastSeconds;
 @property(nonatomic) double pendingResume;
