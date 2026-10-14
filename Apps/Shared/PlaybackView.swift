@@ -41,9 +41,12 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var countdownTask: Task<Void, Never>?
     private var networkTask: Task<Void, Never>?
     private var generation = UUID()
+    private var openOperation = UUID()
 
     func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil) async {
-        await stop()
+        let operation = UUID(); openOperation = operation
+        await stop(cancelOpening: false)
+        guard openOperation == operation, !Task.isCancelled else { return }
         generation = UUID()
         let currentGeneration = generation
         stopped = false; completed = false; next = nil; countdown = .init(); loading = true; failure = nil
@@ -153,15 +156,19 @@ struct NativePlayer: UIViewControllerRepresentable {
         await model.record(account: account, item: item, seconds: seconds, completed: completed)
         await task?.value
     }
-    func stop() async {
+    func stop(cancelOpening: Bool = true) async {
+        if cancelOpening { openOperation = UUID() }
+        generation = UUID()
         guard !stopped else { return }
-        stopped = true; generation = UUID(); countdownTask?.cancel()
+        stopped = true; countdownTask?.cancel()
         player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver); self.endObserver = nil }
         if let playbackFailureObserver { NotificationCenter.default.removeObserver(playbackFailureObserver); self.playbackFailureObserver = nil }
         failureObserver = nil; rateObserver = nil
-        if let player, let item, let account, let model {
+        let stoppedPlayer = player
+        player = nil // Detach before await so an older stop cannot clear a replacement player.
+        if let player = stoppedPlayer, let item, let account, let model {
             let seconds = player.currentTime().seconds
             let client = online ? api : nil
             let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true)
@@ -169,7 +176,6 @@ struct NativePlayer: UIViewControllerRepresentable {
             await model.record(account: account, item: item, seconds: seconds, completed: completed)
             await task?.value
         }
-        player = nil
     }
     private func enqueueReport(client: JellyfinClient, event: SessionEvent, endpoint: String) -> Task<Void, Never> {
         let preceding = networkTask
@@ -218,6 +224,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         }
         completed = true
         await stop()
+        let completedGeneration = generation
         guard let series = item.SeriesId else { return }
         do {
             var episodes: [MediaItem] = []; var offset = 0
@@ -227,6 +234,7 @@ struct NativePlayer: UIViewControllerRepresentable {
                 if page.Items.isEmpty || offset >= (page.TotalRecordCount ?? offset) { break }
             }
             let ordered = episodes.sorted { ($0.ParentIndexNumber ?? 0, $0.IndexNumber ?? 0) < ($1.ParentIndexNumber ?? 0, $1.IndexNumber ?? 0) }
+            guard generation == completedGeneration, !countdown.cancelled else { return }
             guard let index = ordered.firstIndex(where: { $0.Id == item.Id }), index + 1 < ordered.count else { return }
             next = ordered[index + 1]; countdown = .init()
             countdownTask = Task { @MainActor [weak self] in
