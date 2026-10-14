@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "MahiFinCore",
-    platforms: [.iOS(.v18), .tvOS(.v18), .macOS(.v13)],
+    platforms: [.iOS("18.0"), .tvOS("18.0"), .macOS(.v13)],
     products: [.library(name: "MahiFinCore", targets: ["MahiFinCore"])],
     targets: [
         .target(name: "MahiFinCore"),
