@@ -15,6 +15,25 @@ import SwiftUI
         WindowGroup {
             Group {
                 if let model = bootstrap.model {
+                    #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--vlc-fixture") {
+                        PlaybackFixtureView().preferredColorScheme(.dark)
+                    } else {
+                        application(model)
+                    }
+                    #else
+                    application(model)
+                    #endif
+                } else {
+                    VStack(spacing: 24) {
+                        Text("error.storage")
+                        Button("retry") { bootstrap.load() }
+                    }.padding()
+                }
+            }
+        }
+    }
+    private func application(_ model: AppModel) -> some View {
                     RootView().environmentObject(model).preferredColorScheme(.dark).tint(.mint)
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { Task { await model.sync() } }
@@ -25,13 +44,5 @@ import SwiftUI
                             try? await Task.sleep(for: .seconds(30))
                         }
                     }
-                } else {
-                    VStack(spacing: 24) {
-                        Text("error.storage")
-                        Button("retry") { bootstrap.load() }
-                    }.padding()
-                }
-            }
-        }
     }
 }

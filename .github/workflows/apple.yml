@@ -11,7 +11,7 @@ concurrency:
 jobs:
   build:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
@@ -28,6 +28,10 @@ jobs:
       - name: Shared fixture tests
         working-directory: Packages/MahiFinCore
         run: swift test
+      - name: Author synthetic media fixtures
+        run: |
+          command -v ffmpeg || brew install ffmpeg
+          python3 scripts/generate_media.py
       - name: iOS unsigned simulator build
         run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-iOS -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData/iOS CODE_SIGNING_ALLOWED=NO build
       - name: tvOS unsigned simulator build

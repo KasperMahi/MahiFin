@@ -54,6 +54,10 @@
 "detail.episodes" = "Afsnit";
 "detail.noOverview" = "Ingen beskrivelse tilgængelig.";
 "player.play" = "Afspil";
+"player.seek" = "Spol";
+"player.audio" = "Lydspor";
+"player.subtitles" = "Undertekster";
+"player.subtitlesOff" = "Fra";
 "player.resume" = "Fortsæt";
 "player.loading" = "Forbereder original afspilning…";
 "player.unsupported" = "Original afspilning kunne ikke starte. Denne version understøtter filer kompatible med den indbyggede afspiller. Remux, lydkonvertering, videokonvertering og alternativ lokal afspiller er endnu ikke integreret. Der blev ikke anmodet om videokonvertering. Kontroller codecs, adgang og netværk.";

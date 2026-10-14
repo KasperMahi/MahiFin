@@ -109,7 +109,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         var movedFile: URL?
         do {
             guard let response = downloadTask.response as? HTTPURLResponse, response.statusCode == 200 else { throw ClientError.invalidResponse }
-            let containers: Set<String> = ["mp4", "mov", "m4v"]
+            let containers: Set<String> = ["mp4", "mov", "m4v", "mkv", "webm", "avi", "ts"]
             guard let ext = records[index].source.Container?.lowercased(), containers.contains(ext) else { throw ClientError.unavailable }
             let filename = id.uuidString + "." + ext
             let destination = root.appendingPathComponent(filename)

@@ -19,6 +19,8 @@
 
 ## Correctness limits
 
+Continuation: official VLCKit 4 at revision 2e0868f5ed40fe59cd92f377645fdcc260c6e759 selected over SwiftVLC (Swift 6.3 toolchain requirement) and GPL-default KSPlayer. Objective-C bridge uses verified pinned public headers for time, seek, drawable and track selection. VLC receives only original static/local file URLs, quiet logging mandatory. Native remains preferred; local engine precedes server conversion for its declared format set. Official nightly binary is checksum-pinned; both app targets and real synthetic MKV integration must pass CI before treating this milestone as compile-tested. Public binary distribution has an explicit corresponding-source/relinking license gate. VLCKit 4 exposes Stopped rather than a separate EOF delegate: completion requires natural stop near known duration; manual stop detaches delegate first. Validate seek/end/error behavior with hardware; unknown/early stop never marks watched.
+
 No server-side conversion stream is issued by the initial native path. Remux/audio conversion/video consent policy is modelled and tested, but actual conversion negotiation is blocked until media-profile contract integration is verified. This is a safe fallback, not a completed conversion feature.
 
 Static streaming is allowed only when metadata explicitly declares VideoFile (not BluRay/DVD or missing type). Upstream VideosController has a disc-source encoding branch even with Static=true, so fail closed before constructing that URL. Tests cover missing/disc type rejection. Original downloads are a separate byte endpoint and accept one unambiguous source.

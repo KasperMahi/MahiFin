@@ -51,6 +51,8 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 
 Continuation R0 review: completed local replay starts at zero; download integrity requires probed original size and rejects a truncated HTTP length. Regression tests authored; fresh CI pending. Orphan background tasks are cancelled during reconciliation. Alternative engine audit is in progress; no new compatibility claim yet.
 
+R0 core tests + both unsigned builds passed run 38625217485 at 2b54fb8. R1: official pinned VLCKit adapter, original streaming/offline MKV, seek/audio/subtitle controls and synthetic MKV integration harness are implemented but NOT compile/runtime tested yet. Existing matrix's earlier evidence remains historical until the R1 run. LGPL distribution follow-up is recorded in THIRD_PARTY_NOTICES.md; no physical codec/audio/HDR claims.
+
 1. Expand simulator UI smoke beyond onboarding and add player/download lifecycle tests. Final code/compiler/test iteration is green at the run above.
 2. Live API fixtures/integration across 10.10/10.11/12, metadata/permissions/Quick Connect/media profiles.
 3. Real native-compatible playback/offline/AirPlay acceptance on iPhone and Apple TV; trusted subtitle/marker behavior.

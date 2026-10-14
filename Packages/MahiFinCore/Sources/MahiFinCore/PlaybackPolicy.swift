@@ -14,6 +14,8 @@ public struct DeviceCapabilities: Sendable {
     public var audioCodecs: Set<String> = ["aac", "ac3", "eac3", "alac", "mp3"]
     public var maxWidth: Int = 4096
     public var alternativeAvailable = false
+    public var alternativeContainers: Set<String> = ["mkv", "mp4", "mov", "m4v", "webm", "avi", "ts"]
+    public var alternativeVideoCodecs: Set<String> = ["h264", "hevc", "mpeg4", "mpeg2video", "vp8", "vp9", "av1"]
     public var hdrAvailable = false
     public init() {}
     public static var legacyCast: DeviceCapabilities {
@@ -30,16 +32,18 @@ public enum PlaybackPolicy {
         guard let streams = source.MediaStreams, let video = streams.first(where: { $0.Type == "Video" }),
               let codec = video.Codec?.lowercased(), let width = video.Width, width > 0 else { return decision(.unsupported, "metadata") }
         if requiresSubtitleBurnIn { return decision(.needsVideoConsent, "subtitles") }
-        if !device.videoCodecs.contains(codec) || width > device.maxWidth { return decision(.needsVideoConsent, "video") }
+        if width > device.maxWidth { return decision(.needsVideoConsent, "video") }
         let hdr = video.VideoRangeType.map { !["SDR", "Unknown"].contains($0) } ?? false
         if hdr && !device.hdrAvailable { return decision(.unsupported, "hdr.hardware") }
         let container = source.Container?.lowercased() ?? ""
         let audio = streams.filter { $0.Type == "Audio" }
         let audioSupported = audio.isEmpty || audio.allSatisfy { device.audioCodecs.contains($0.Codec?.lowercased() ?? "") }
+        let alternative = device.alternativeAvailable && device.alternativeContainers.contains(container) && device.alternativeVideoCodecs.contains(codec)
+        if !device.videoCodecs.contains(codec) { return alternative ? decision(.alternative, "video.local") : decision(.needsVideoConsent, "video") }
         if !device.nativeContainers.contains(container) {
-            return device.alternativeAvailable ? decision(.alternative, "container.local") : decision(.remux, "container")
+            return alternative ? decision(.alternative, "container.local") : decision(.remux, "container")
         }
-        if !audioSupported { return decision(.audioOnly, "audio") }
+        if !audioSupported { return alternative ? decision(.alternative, "audio.local") : decision(.audioOnly, "audio") }
         return decision(.direct, "original")
     }
 }

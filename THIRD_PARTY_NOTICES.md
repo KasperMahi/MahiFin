@@ -1,6 +1,14 @@
 # Third-party provenance
 
-Application and tests are original implementation. No Swiftfin/MPL covered source or VLC binaries are copied. Apple system frameworks are supplied by the OS/Xcode. No external runtime packages are linked.
+Application, Objective-C adapter and tests are original implementation. No Swiftfin/MPL covered source is copied. Apple frameworks are supplied by the OS/Xcode.
+
+## VLCKit / libVLC
+
+Official VideoLAN VLCKit, LGPL-2.1-or-later. Copyright VideoLAN and VLC authors. License retained in Licenses/VLCKit-LGPL-2.1.txt. Package source pinned to revision `2e0868f5ed40fe59cd92f377645fdcc260c6e759` at https://github.com/videolan/vlckit. It references official binary `VLCKit-4.0-20260929-1631.zip` with SHA256 `f37c8dbdd4427d1a3f5d75dc4b8bd1ae863cef4426f9a405a2fd1c5c9012f1fb`. Downloaded by SwiftPM from VideoLAN; no binary copied into Git. Package minimums iOS/tvOS 12; our app minimums stay 18.
+
+Do not publish an app binary until corresponding libVLC/contrib build source and notices for the exact artifact, relinking/replacement materials and distribution terms are preserved and reviewed. Private CI compilation is not a completed public-distribution license audit. No library source is modified here. No universal codec, passthrough or HDR claim is made.
+
+CI uses FFmpeg to generate original synthetic clips only, not as a linked app dependency. Generated test media contains no third-party audiovisual work.
 
 Research references: Jellyfin server/API (GPL-2.0), Swiftfin (MPL-2.0), jellyfin-sdk-swift (MIT), jellyfin-chromecast (GPL-2.0), Google Cast documentation. HTTP interoperability is implemented independently; these projects are not redistributed.
 

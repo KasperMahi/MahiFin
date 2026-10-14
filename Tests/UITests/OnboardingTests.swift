@@ -20,6 +20,22 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(app.buttons["auth.signin"].waitForExistence(timeout: 15))
         XCTAssertEqual(app.buttons["auth.signin"].label, "Log ind")
     }
+    func testRealVLCMKVPlaybackSeekAndEmbeddedTracks() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--vlc-fixture", "-AppleLanguages", "(en)"]
+        app.launch()
+        let status = app.staticTexts["fixture.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 20))
+        let playing = NSPredicate(format: "label == %@", "playing")
+        expectation(for: playing, evaluatedWith: status)
+        waitForExpectations(timeout: 20)
+        #if os(iOS)
+        app.buttons["fixture.seek"].tap()
+        #endif
+        // Real libVLC callbacks drive EOF; no fake timer/metadata marks completion.
+        expectation(for: NSPredicate(format: "label == %@", "ended"), evaluatedWith: status)
+        waitForExpectations(timeout: 25)
+    }
     #if os(iOS)
     func testInsecureURLShowsErrorWithoutNetworkAuthentication() {
         let app = launch()

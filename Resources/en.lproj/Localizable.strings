@@ -54,6 +54,10 @@
 "detail.episodes" = "Episodes";
 "detail.noOverview" = "No description available.";
 "player.play" = "Play";
+"player.seek" = "Seek";
+"player.audio" = "Audio track";
+"player.subtitles" = "Subtitles";
+"player.subtitlesOff" = "Off";
 "player.resume" = "Resume";
 "player.loading" = "Preparing original playback…";
 "player.unsupported" = "Original playback could not start. This build supports native-compatible files. Remux, audio conversion, video conversion and the alternative local engine are not integrated yet. No video conversion was requested. Check codecs, access permissions and the network.";

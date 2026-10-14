@@ -16,6 +16,7 @@ struct NativePlayer: UIViewControllerRepresentable {
 }
 @MainActor final class PlaybackSession: ObservableObject {
     @Published var player: AVPlayer?
+    @Published var alternative: AlternativePlayer?
     @Published var failure: String?
     @Published var loading = true
     @Published var next: MediaItem?
@@ -55,11 +56,14 @@ struct NativePlayer: UIViewControllerRepresentable {
         guard let account else { failure = NSLocalizedString("error.auth", comment: ""); loading = false; return }
         do {
             let url: URL
+            var decision: PlaybackDecision
+            var capabilities = DeviceCapabilities(); capabilities.alternativeAvailable = true
             var resume = item.position
             let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
             resume = ResumePosition.local(item: item, pending: pending)
             if let localURL, let localSource {
                 online = false; api = nil; source = localSource; url = localURL
+                decision = PlaybackPolicy.decide(localSource, device: capabilities)
             } else {
                 online = true
                 let client = try model.client(for: account); api = client
@@ -75,13 +79,39 @@ struct NativePlayer: UIViewControllerRepresentable {
                 let info = try await client.playbackInfo(user: account.userID, item: item.Id)
                 guard info.ErrorCode == nil, let selected = info.MediaSources.first else { throw ClientError.unavailable }
                 source = selected; sessionID = info.PlaySessionId ?? UUID().uuidString
-                let decision = PlaybackPolicy.decide(selected, device: .init())
+                decision = PlaybackPolicy.decide(selected, device: capabilities)
                 model.diagnostic = DiagnosticReport(source: selected, decision: decision)
-                guard decision.route == .direct else { throw ClientError.unavailable }
+                guard decision.canStart else { throw ClientError.unavailable }
                 url = try client.directURL(item: item.Id, source: selected)
             }
             try Task.checkCancellation()
             guard generation == currentGeneration, !stopped else { return }
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            try AVAudioSession.sharedInstance().setActive(true)
+            if decision.route == .alternative {
+                let local = AlternativePlayer()
+                alternative = local
+                local.onEvent = { [weak self] event in
+                    Task { @MainActor in
+                        guard let self, self.generation == currentGeneration else { return }
+                        if event == "error" { self.failed() }
+                        else if event == "ended" { await self.ended() }
+                        else {
+                            self.loading = false
+                            self.activeSegment = self.segments.first { $0.active(item: item.Id, seconds: local.seconds) }
+                            await self.checkpoint(force: event != "time")
+                        }
+                    }
+                }
+                if online, let api {
+                    segments = (try? await api.segments(item: item.Id)) ?? []
+                    await enqueueReport(client: api, event: SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing").value
+                }
+                guard generation == currentGeneration, !stopped else { return }
+                local.open(url: url, resume: resume)
+                return
+            }
+            guard decision.route == .direct else { throw ClientError.unavailable }
             let asset = AVURLAsset(url: url)
             let playable = try await asset.load(.isPlayable)
             guard playable else { throw ClientError.unavailable }
@@ -142,15 +172,16 @@ struct NativePlayer: UIViewControllerRepresentable {
         }
     }
     func checkpoint(force: Bool) async {
-        guard !stopped, !reporting, let player, let item, let account, let model else { return }
-        let seconds = player.currentTime().seconds
+        guard !stopped, !reporting, player != nil || alternative != nil, let item, let account, let model else { return }
+        let seconds = alternative?.seconds ?? player?.currentTime().seconds ?? 0
+        let paused = alternative?.paused ?? (player?.rate == 0)
         guard seconds.isFinite else { return }
         guard force || abs(seconds - lastReport) >= 15 else { return }
         reporting = true; defer { reporting = false }
         lastReport = seconds
         // Capture immutable session identity before an await permits a stop/profile switch.
         let client = online ? api : nil
-        let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: player.rate == 0)
+        let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: paused)
         let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Progress") }
         await model.record(account: account, item: item, seconds: seconds, completed: completed)
         await task?.value
@@ -166,9 +197,12 @@ struct NativePlayer: UIViewControllerRepresentable {
         if let playbackFailureObserver { NotificationCenter.default.removeObserver(playbackFailureObserver); self.playbackFailureObserver = nil }
         failureObserver = nil; rateObserver = nil
         let stoppedPlayer = player
+        let stoppedAlternative = alternative
+        let lastSeconds = stoppedAlternative?.seconds ?? stoppedPlayer?.currentTime().seconds ?? 0
+        stoppedAlternative?.stop(); alternative = nil
         player = nil // Detach before await so an older stop cannot clear a replacement player.
-        if let player = stoppedPlayer, let item, let account, let model {
-            let seconds = player.currentTime().seconds
+        if stoppedPlayer != nil || stoppedAlternative != nil, let item, let account, let model {
+            let seconds = lastSeconds
             let client = online ? api : nil
             let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true)
             let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Stopped") }
@@ -188,6 +222,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     func cancelNext() { countdown.cancel(); countdownTask?.cancel(); next = nil }
     func skipSegment() {
         guard let segment = activeSegment else { return }
+        if let alternative { alternative.seek(Double(segment.EndTicks) / 10_000_000); return }
         player?.seek(to: CMTime(seconds: Double(segment.EndTicks) / 10_000_000, preferredTimescale: 600))
     }
     private func apply(_ preferences: UserPreferences, asset: AVAsset, item: AVPlayerItem) async {
@@ -213,6 +248,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     }
     private func failed(issue: String = "player") {
         player?.pause(); loading = false
+        alternative?.bridge.pause()
         let key = issue == "auth" ? "error.auth" : (issue == "network" ? "error.network" : "player.unsupported")
         failure = NSLocalizedString(key, comment: "")
         model?.diagnostic = DiagnosticReport(source: source, decision: source.map { PlaybackPolicy.decide($0, device: .init()) }, issue: issue)
@@ -262,6 +298,7 @@ struct PlaybackView: View {
             if session.loading { ProgressView("player.loading") }
             if let failure = session.failure { Text(failure).padding(); Button("retry") { Task { await session.open(item, model: model, localURL: localURL, localSource: localSource) } } }
             if let player = session.player { NativePlayer(player: player).ignoresSafeArea(edges: .bottom) }
+            if let alternative = session.alternative { AlternativePlayerView(player: alternative) }
             if let segment = session.activeSegment {
                 Button(segment.Type == "Intro" ? "player.skipIntro" : "player.skipCredits") { session.skipSegment() }
             }

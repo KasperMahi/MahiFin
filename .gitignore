@@ -21,3 +21,6 @@ TestMedia/private/
 /.vs
 /TestResults/
 __pycache__/
+/TestFixtures/PlaybackFixtures/*.mp4
+/TestFixtures/PlaybackFixtures/*.mkv
+/TestFixtures/PlaybackFixtures/*.srt

@@ -63,7 +63,7 @@ These are required release gates, not completed modules. The initial compileable
 
 ## Continuation milestones — existing branch / draft PR #1
 
-- [ ] R0: Review correctness, fix completed offline resume and original-size validation; regression tests + both CI builds.
+- [x] R0: Review correctness, completed offline resume/original-size fixes; regression tests + both unsigned CI builds passed at 2b54fb8 (onboarding smoke result tracked separately).
 - [ ] R1: Pin licensed official VLCKit, wire local/streaming alternative player, controls/seek/tracks; synthetic-media tests + both CI builds.
 - [ ] R2: Consent-scoped server remux/audio conversion/video execution and request fixtures.
 - [ ] R3: Native 4K/HDR capability probing and conservative profile tests; physical output remains pending.
@@ -71,3 +71,5 @@ These are required release gates, not completed modules. The initial compileable
 - [ ] R5: Offline/track/UI improvements, realistic fixtures and playback lifecycle/UI expansion.
 
 Continuation audit: clean `codex/initial-implementation` at 820cd45; draft PR #1 open/unmerged. Existing work retained. Found completed offline events resuming at duration and download HTTP length replacing authoritative original size. Also reviewing stale completion ordering and conflict queue head-of-line blocking. Official VLCKit revision 2e0868f5ed40fe59cd92f377645fdcc260c6e759 declares iOS/tvOS 12; pinned nightly binary/API must be compiler-tested before enabling capability. SwiftVLC main requires tools 6.3, incompatible with Xcode 16.4 unchanged. No dependency enabled yet.
+
+R0 CI run 38625217485: core tests and both unsigned simulator builds passed. R1 implementation now wires pinned official VLCKit through original Objective-C bridge, static/local original URLs, pause/seek/audio/subtitle controls, manual-stop-safe delegate handling and original MKV downloads. LGPL notice retained; public binary distribution is gated on exact corresponding-source/relinking materials. Native remains preferred; codec/format capability is bounded, no HDR/passthrough promise. CI creates synthetic H.264/AAC MP4/MKV + embedded SRT and runs an actual engine EOF/seek UI harness. R1 compiler/runtime tests pending; local project/localization checks pass.
