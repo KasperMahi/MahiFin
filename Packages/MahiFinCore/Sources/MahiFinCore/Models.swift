@@ -111,6 +111,7 @@ public struct MediaSource: Codable, Sendable {
     public var VideoType: String?
     public init(id: String, container: String?, streams: [MediaStream]) {
         Id = id; Container = container; MediaStreams = streams
+        VideoType = "VideoFile"; IsRemote = false; RequiresOpening = false
     }
 }
 public struct MediaItem: Codable, Identifiable, Sendable {

@@ -19,4 +19,6 @@
 
 No server-side conversion stream is issued by the initial native path. Remux/audio conversion/video consent policy is modelled and tested, but actual conversion negotiation is blocked until media-profile contract integration is verified. This is a safe fallback, not a completed conversion feature.
 
+Static streaming is allowed only when metadata explicitly declares VideoFile (not BluRay/DVD or missing type). Upstream VideosController has a disc-source encoding branch even with Static=true, so fail closed before constructing that URL. Tests cover missing/disc type rejection. Original downloads are a separate byte endpoint and accept one unambiguous source.
+
 History is durable per account, coalesced per item and retries absolute played/watched state. Jellyfin has no general idempotency key for session posts: session activity is best effort, never described as exactly-once over a failed response. Offline conflict detection compares server LastPlayedDate against stable local activity timestamps; unknown or skewed clocks retain the event and surface a conflict, rather than overwrite newer server history. Favourites/watched edits are independent of playback positions.

@@ -25,6 +25,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var segments: [MediaSegment] = []
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var playbackFailureObserver: NSObjectProtocol?
     private var failureObserver: NSKeyValueObservation?
     private var rateObserver: NSKeyValueObservation?
     private var lastReport: Double = -15
@@ -118,6 +119,9 @@ struct NativePlayer: UIViewControllerRepresentable {
             endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
                 Task { @MainActor in await self?.ended() }
             }
+            playbackFailureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.failed() }
+            }
             loading = false; player.play()
         } catch {
             loading = false; failed()
@@ -143,6 +147,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }
         if let endObserver { NotificationCenter.default.removeObserver(endObserver); self.endObserver = nil }
+        if let playbackFailureObserver { NotificationCenter.default.removeObserver(playbackFailureObserver); self.playbackFailureObserver = nil }
         failureObserver = nil; rateObserver = nil
         if let player, let item, let account, let model {
             let seconds = player.currentTime().seconds
@@ -196,7 +201,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     }
     private func ended() async {
         guard !completed, !stopped, let item, let account, let api, let model else {
-            if !online { completed = true; await checkpoint(force: true) }
+            if !online && !stopped { completed = true; await stop() }
             return
         }
         completed = true

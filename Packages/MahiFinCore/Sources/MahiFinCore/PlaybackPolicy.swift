@@ -26,7 +26,7 @@ public enum PlaybackPolicy {
     public static func decide(_ source: MediaSource, device: DeviceCapabilities, requiresSubtitleBurnIn: Bool = false) -> PlaybackDecision {
         func decision(_ route: PlaybackRoute, _ reason: String) -> PlaybackDecision { .init(route: route, reason: reason) }
         guard source.IsRemote != true, source.RequiresOpening != true,
-              source.VideoType == nil || source.VideoType == "VideoFile" else { return decision(.unsupported, "source") }
+              source.VideoType == "VideoFile" else { return decision(.unsupported, "source") }
         guard let streams = source.MediaStreams, let video = streams.first(where: { $0.Type == "Video" }),
               let codec = video.Codec?.lowercased(), let width = video.Width, width > 0 else { return decision(.unsupported, "metadata") }
         if requiresSubtitleBurnIn { return decision(.needsVideoConsent, "subtitles") }

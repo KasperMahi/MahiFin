@@ -77,6 +77,10 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(PlaybackPolicy.decide(source(video: "hevc", width: 3840), device: .legacyCast).route, .needsVideoConsent)
         XCTAssertEqual(PlaybackPolicy.decide(source(width: 3840), device: .init()).route, .direct)
         XCTAssertFalse(PlaybackPolicy.decide(source(video: "unknown"), device: .init()).canStart)
+        var disc = source(); disc.VideoType = "BluRay"
+        XCTAssertEqual(PlaybackPolicy.decide(disc, device: .init()).route, .unsupported)
+        disc.VideoType = nil
+        XCTAssertEqual(PlaybackPolicy.decide(disc, device: .init()).route, .unsupported)
     }
     func testOriginalRequestsNeverNegotiateConversion() throws {
         let value = try client(FixtureTransport("{}"))
@@ -84,6 +88,8 @@ final class CoreTests: XCTestCase {
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
         XCTAssertEqual(query.first { $0.name == "Static" }?.value, "true")
         XCTAssertFalse(url.absoluteString.contains("VideoCodec"))
+        var unknownType = source(); unknownType.VideoType = nil
+        XCTAssertThrowsError(try value.directURL(item: "fixture", source: unknownType))
         XCTAssertEqual(try value.originalRequest(item: "fixture").url?.path, "/jellyfin/Items/fixture/Download")
     }
     func testProfileLaunchPolicy() {

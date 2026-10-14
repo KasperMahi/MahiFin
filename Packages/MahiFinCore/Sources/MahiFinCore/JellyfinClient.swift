@@ -136,7 +136,7 @@ public struct JellyfinClient: Sendable {
     }
     public func directURL(item: String, source: MediaSource) throws -> URL {
         guard source.IsRemote != true, source.RequiresOpening != true,
-              source.VideoType == nil || source.VideoType == "VideoFile" else { throw ClientError.unavailable }
+              source.VideoType == "VideoFile" else { throw ClientError.unavailable }
         // Token-bearing URL exists only in memory for public AVURLAsset APIs; never persist/export it.
         guard let token else { throw ClientError.unauthorized }
         return try url("Videos/\(item)/stream", query: ["Static": "true", "MediaSourceId": source.Id, "api_key": token])
