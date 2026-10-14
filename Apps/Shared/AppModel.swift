@@ -28,6 +28,7 @@ import MahiFinCore
             #endif
             accounts = try disk.load([Account].self, name: "accounts.json") ?? []
             let last = try disk.load(String.self, name: "active.json")
+            cellularDownloads = try disk.load(Bool.self, name: "cellular.json") ?? false
             #if os(tvOS)
             active = ProfilePolicy.launch(accounts: accounts, last: last, television: true)
             #else
@@ -70,6 +71,10 @@ import MahiFinCore
         else if value is CancellationError { return }
         else { error = NSLocalizedString("error.network", comment: "") }
     }
+    func setCellularDownloads(_ enabled: Bool) {
+        do { try disk.save(enabled, name: "cellular.json"); cellularDownloads = enabled }
+        catch { show(ClientError.storage) }
+    }
     func record(account: Account, item: MediaItem, seconds: Double, completed: Bool) async {
         do { try await history.record(account: account.id, item: item.Id, seconds: seconds, completed: completed, device: deviceID) }
         catch { show(ClientError.storage) }
@@ -77,25 +82,7 @@ import MahiFinCore
     func sync() async {
         guard !syncing, let account = active, let api = try? client(for: account) else { return }
         syncing = true; defer { syncing = false }
-        for event in await history.pending(account: account.id) {
-            guard active?.id == account.id else { return }
-            do {
-                let current = try await api.item(user: account.userID, id: event.item)
-                let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let serverDate = current.UserData?.LastPlayedDate.flatMap { formatter.date(from: $0) ?? ISO8601DateFormatter().date(from: $0) }
-                let applied = serverDate.map { abs($0.timeIntervalSince(event.occurred)) < 0.001 } == true
-                    && (event.completed ? current.UserData?.Played == true : current.UserData?.PlaybackPositionTicks == event.ticks)
-                if applied { try await history.acknowledge(event); continue }
-                let resolution = HistoryConflict.resolve(event, serverDate: serverDate, now: Date())
-                if resolution == .conflict { throw ClientError.conflict }
-                if resolution == .upload {
-                    try await api.savePosition(user: account.userID, item: event.item, ticks: event.ticks, date: event.occurred, completed: event.completed)
-                }
-                try await history.acknowledge(event)
-            } catch {
-                if (error as? ClientError) == .conflict { diagnostic = .init(source: nil, decision: nil, issue: "conflict") }
-                return // Durable queue retained. Retry on foreground / timer / explicit sync.
-            }
-        }
+        let result = await HistorySync.run(queue: history, remote: api, account: account)
+        if let issue = result.issue { diagnostic = .init(source: nil, decision: nil, issue: issue) }
     }
 }

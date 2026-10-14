@@ -285,7 +285,9 @@ struct SettingsView: View {
             }
             Section("settings.playback") { Text("settings.policy"); Text("settings.hardware") }
             #if os(iOS)
-            Section("nav.downloads") { Toggle("download.cellular", isOn: $model.cellularDownloads) }
+            Section("nav.downloads") {
+                Toggle("download.cellular", isOn: Binding(get: { model.cellularDownloads }, set: { model.setCellularDownloads($0) }))
+            }
             Section("settings.cast") { Text("settings.castBlocked") }
             #endif
             Section("settings.advanced") {

@@ -10,7 +10,7 @@ Resume from this checklist and Git history. Never equate implemented with tested
 - [x] B2: Native iOS/tvOS project, onboarding, profiles, catalog, search and details (compile verification pending).
 - [x] B3: Original-only AVPlayer, durable progress and cancellable next episode wired (compile/hardware verification pending; conversion integrations blocked).
 - [x] B4: iPhone background original download and offline playback/history wiring, AirPlay; honest Cast/alternative-engine boundaries (compile/device verification pending).
-- [ ] C: Pinned macOS CI; compile both targets and run tests; repair failures.
+- [x] C: Pinned macOS CI; compile both targets and run tests; repair failures (passed at 475548a; final hardening rerun pending).
 - [ ] D: Acceptance status matrix, reproducible setup/manual tests, private-repository PR.
 
 ## Verification and blockers
@@ -35,3 +35,5 @@ CI iteration 1: run 38617202620 reached Xcode 16.4/Swift 6.1.2; reproducibility 
 CI iteration 2: run 38617389993 failed on Swift reserved `Type` member names and optional collection `first` syntax. Escaped JSON `Type` properties and made diagnostic lookup explicit. Also changed storage initialization from fatal crash to retry screen and fixed next-episode task self-cancellation. API audit confirmed nullable partial UpdateUserItemDataDto (10.10.7); position writes do not clear favourites. Next: rerun compiler/tests and inspect both app builds.
 
 CI iteration 3: run 38617580188 passed all 10 core tests, then iOS compilation exposed initialization-order error (account property accessed before download manager initialization). Reordered initialization. Added original-request update tests and validated trusted MediaSegments API from upstream 10.10.7; wired marker skips and basic native subtitle/audio preferences. Twelve tests now authored; new changes need rerun. Background cleanup races repaired; original downloads require one unambiguous media source. Conversion and Cast still blocked.
+
+CI iteration 4: run 38617972775 succeeded at 475548a: 12 tests, iOS unsigned simulator build, tvOS unsigned simulator build, reproducibility and localization checks. No UI/hardware tests. Added shared HistorySync with lost-response/idempotent replay fixtures, serialized Progress/Stopped network events, persisted cellular preference and newest local-event resume. README, acceptance matrix and exact hardware repro steps authored. Local structural checks still pass. Next: final Swift/build rerun and simulator smoke coverage; release blockers remain explicit.

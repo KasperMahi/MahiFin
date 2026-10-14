@@ -38,7 +38,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var reporting = false
     private var online = false
     private var countdownTask: Task<Void, Never>?
-    private var pipeline: Task<Void, Never>?
+    private var networkTask: Task<Void, Never>?
     private var generation = UUID()
 
     func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil) async {
@@ -52,7 +52,8 @@ struct NativePlayer: UIViewControllerRepresentable {
         do {
             let url: URL
             var resume = item.position
-            if let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id }) {
+            let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
+            if let pending {
                 resume = Double(pending.ticks) / 10_000_000
             }
             if let localURL, let localSource {
@@ -62,6 +63,13 @@ struct NativePlayer: UIViewControllerRepresentable {
                 let client = try model.client(for: account); api = client
                 let fresh = try await client.item(user: account.userID, id: item.Id)
                 resume = fresh.position
+                if let pending {
+                    let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    let serverDate = fresh.UserData?.LastPlayedDate.flatMap { formatter.date(from: $0) ?? ISO8601DateFormatter().date(from: $0) }
+                    if HistoryConflict.resolve(pending, serverDate: serverDate, now: Date()) == .upload {
+                        resume = pending.completed ? 0 : Double(pending.ticks) / 10_000_000
+                    }
+                }
                 let info = try await client.playbackInfo(user: account.userID, item: item.Id)
                 guard info.ErrorCode == nil, let selected = info.MediaSources.first else { throw ClientError.unavailable }
                 source = selected; sessionID = info.PlaySessionId ?? UUID().uuidString
@@ -122,10 +130,12 @@ struct NativePlayer: UIViewControllerRepresentable {
         guard force || abs(seconds - lastReport) >= 15 else { return }
         reporting = true; defer { reporting = false }
         lastReport = seconds
+        // Capture immutable session identity before an await permits a stop/profile switch.
+        let client = online ? api : nil
+        let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: player.rate == 0)
+        let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Progress") }
         await model.record(account: account, item: item, seconds: seconds, completed: completed)
-        if online, let api {
-            try? await api.report(SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: player.rate == 0), endpoint: "Playing/Progress")
-        }
+        await task?.value
     }
     func stop() async {
         guard !stopped else { return }
@@ -136,12 +146,22 @@ struct NativePlayer: UIViewControllerRepresentable {
         failureObserver = nil; rateObserver = nil
         if let player, let item, let account, let model {
             let seconds = player.currentTime().seconds
+            let client = online ? api : nil
+            let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true)
+            let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Stopped") }
             await model.record(account: account, item: item, seconds: seconds, completed: completed)
-            if online, let api {
-                try? await api.report(SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true), endpoint: "Playing/Stopped")
-            }
+            await task?.value
         }
         player = nil
+    }
+    private func enqueueReport(client: JellyfinClient, event: SessionEvent, endpoint: String) -> Task<Void, Never> {
+        let preceding = networkTask
+        let task = Task {
+            await preceding?.value
+            try? await client.report(event, endpoint: endpoint)
+        }
+        networkTask = task
+        return task
     }
     func cancelNext() { countdown.cancel(); countdownTask?.cancel(); next = nil }
     func skipSegment() {
