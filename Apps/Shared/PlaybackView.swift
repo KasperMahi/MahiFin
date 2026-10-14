@@ -98,32 +98,44 @@ struct NativePlayer: UIViewControllerRepresentable {
                     await apply(preferences, asset: asset, item: playerItem)
                 }
             }
+            try Task.checkCancellation()
+            guard generation == currentGeneration, !stopped else { return }
             if resume > 0 { await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) }
+            guard generation == currentGeneration, !stopped else { return }
             if online, let api {
-                try await api.report(SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing")
+                await enqueueReport(client: api, event: SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing").value
             }
             guard generation == currentGeneration, !stopped else { return }
             failureObserver = playerItem.observe(\.status, options: [.new]) { [weak self] value, _ in
-                if value.status == .failed { Task { @MainActor in self?.failed() } }
+                if value.status == .failed { Task { @MainActor in
+                    guard let self, self.generation == currentGeneration else { return }; self.failed()
+                } }
             }
             rateObserver = player.observe(\.rate, options: [.new]) { [weak self] _, _ in
-                Task { @MainActor in await self?.checkpoint(force: true) }
+                Task { @MainActor in
+                    guard let self, self.generation == currentGeneration else { return }; await self.checkpoint(force: true)
+                }
             }
             timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 1, preferredTimescale: 1), queue: .main) { [weak self] _ in
                 Task { @MainActor in
-                    guard let self else { return }
+                    guard let self, self.generation == currentGeneration else { return }
                     self.activeSegment = self.segments.first { $0.active(item: self.item?.Id ?? "", seconds: self.player?.currentTime().seconds ?? 0) }
                     await self.checkpoint(force: false)
                 }
             }
             endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
-                Task { @MainActor in await self?.ended() }
+                Task { @MainActor in
+                    guard let self, self.generation == currentGeneration else { return }; await self.ended()
+                }
             }
             playbackFailureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: playerItem, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.failed() }
+                Task { @MainActor in
+                    guard let self, self.generation == currentGeneration else { return }; self.failed()
+                }
             }
             loading = false; player.play()
         } catch {
+            guard generation == currentGeneration, !stopped else { return }
             loading = false; failed()
         }
     }

@@ -10,6 +10,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     @Published private(set) var records: [DownloadRecord]
     let root: URL
     private let disk: DiskStore
+    private let resumeStore = KeychainTokens()
     private var tasks: [UUID: URLSessionDownloadTask] = [:]
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.background(withIdentifier: "MahiFin.original-downloads.v1")
@@ -49,12 +50,17 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     func start(id: UUID, request: URLRequest, cellular: Bool) throws {
         guard let index = records.firstIndex(where: { $0.id == id }), records[index].state != .complete else { return }
         var request = request; request.allowsCellularAccess = cellular
-        let resumeURL = root.appendingPathComponent(id.uuidString + ".resume")
         let task: URLSessionDownloadTask
-        if let data = try? Data(contentsOf: resumeURL) {
+        let resumeKey = "download-resume:" + id.uuidString
+        if records[index].state == .paused,
+           let encoded = try resumeStore.read(account: resumeKey), let data = Data(base64Encoded: encoded) {
             task = session.downloadTask(withResumeData: data)
-            try? FileManager.default.removeItem(at: resumeURL)
-        } else { task = session.downloadTask(with: request) }
+            try resumeStore.remove(account: resumeKey)
+        } else {
+            task = session.downloadTask(with: request)
+            records[index].received = 0
+        }
+        try resumeStore.remove(account: resumeKey)
         task.taskDescription = id.uuidString; tasks[id] = task
         records[index].state = .downloading; records[index].taskID = task.taskIdentifier; records[index].failure = nil
         try disk.save(records, name: "manifest.json"); task.resume()
@@ -64,14 +70,11 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         records[index].state = .paused; persist()
         tasks[id]?.cancel(byProducingResumeData: { [weak self] data in
             guard let self, let data else { return }
-            // Resume data can contain authorization headers; protected storage, excluded from backup.
-            let url = self.root.appendingPathComponent(id.uuidString + ".resume")
+            // Apple's opaque resume data can include authentication headers. Keep it in Keychain too.
             DispatchQueue.main.async {
                 guard self.records.contains(where: { $0.id == id && $0.state == .paused }) else { return }
-                try? data.write(to: url, options: .atomic)
-                try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: url.path)
-                var protected = url; var values = URLResourceValues(); values.isExcludedFromBackup = true
-                try? protected.setResourceValues(values)
+                do { try self.resumeStore.write(data.base64EncodedString(), account: "download-resume:" + id.uuidString) }
+                catch { self.persist() /* The durable manifest stays paused; a fresh transfer remains possible. */ }
             }
         })
     }
@@ -82,7 +85,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         if let filename = records[index].filename, filename.hasPrefix(id.uuidString + "."), !filename.contains("/") {
             try FileManager.default.removeItem(at: root.appendingPathComponent(filename))
         }
-        try? FileManager.default.removeItem(at: root.appendingPathComponent(id.uuidString + ".resume"))
+        try resumeStore.remove(account: "download-resume:" + id.uuidString)
         records.remove(at: index); try disk.save(records, name: "manifest.json")
     }
     private func persist() {
@@ -93,6 +96,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard let id = downloadTask.taskDescription.flatMap(UUID.init(uuidString:)), let index = records.firstIndex(where: { $0.id == id }) else { return }
+        guard records[index].taskID == downloadTask.taskIdentifier else { return }
         let oldMegabyte = records[index].received / 1_000_000
         records[index].received = totalBytesWritten
         if totalBytesExpectedToWrite > 0 { records[index].expected = totalBytesExpectedToWrite }
@@ -100,6 +104,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         guard let id = downloadTask.taskDescription.flatMap(UUID.init(uuidString:)), let index = records.firstIndex(where: { $0.id == id }) else { return }
+        guard records[index].taskID == downloadTask.taskIdentifier else { return }
         var movedFile: URL?
         do {
             guard let response = downloadTask.response as? HTTPURLResponse, response.statusCode == 200 else { throw ClientError.invalidResponse }
@@ -124,6 +129,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let id = task.taskDescription.flatMap(UUID.init(uuidString:)), let index = records.firstIndex(where: { $0.id == id }) else { return }
+        guard records[index].taskID == task.taskIdentifier else { return }
         tasks[id] = nil
         if error != nil && records[index].state != .paused {
             records[index].state = .failed; records[index].failure = "network-or-auth"; persist()
