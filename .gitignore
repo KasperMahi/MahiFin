@@ -24,3 +24,4 @@ __pycache__/
 /TestFixtures/PlaybackFixtures/*.mp4
 /TestFixtures/PlaybackFixtures/*.mkv
 /TestFixtures/PlaybackFixtures/*.srt
+/TestFixtures/PlaybackInputs/

@@ -10,6 +10,7 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 - Continuation [run 38627898488](https://github.com/KasperMahi/MahiFin/actions/runs/38627898488) at `6b906ed`: **24 core tests, both unsigned builds and 4 iOS UI tests passed**, including real synthetic H.264/AAC MKV playback/seek/EOF via VLCKit. Overall run failed before tvOS UI tests (FrontBoard could not find runner). Latest R5 edits and track-count assertions still require rerun.
 - Pinned official VLCKit and iOS-only Google Cast SDK; notices/source-distribution gates in THIRD_PARTY_NOTICES.md. Media is generated from authored color/audio/subtitle fixtures in CI, with no private content.
 - R5 [run 38630429136](https://github.com/KasperMahi/MahiFin/actions/runs/38630429136) at `f0da22f`: **31 core tests and both unsigned builds passed**. New iOS embedded-track enumeration assertion failed; tvOS UI skipped after that failure. This is not a green CI run or track verification. Explicit fixture start/longer clip/detailed failure output are in the next rerun, alongside the consent UI and selected-audio tests.
+- [Run 38632768362](https://github.com/KasperMahi/MahiFin/actions/runs/38632768362) at `f103d67`: **32 core tests, both unsigned builds and iOS explicit consent UI passed**. MKV reported 1 audio / 2 subtitles because the bundled SRT muxing input was auto-discovered alongside the embedded track. Fixture input isolation repaired for next run; selection/seek assertions still pending and overall run failed. tvOS not executed in this run.
 
 ## Acceptance matrix
 
