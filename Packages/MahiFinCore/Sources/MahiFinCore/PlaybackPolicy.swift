@@ -99,7 +99,7 @@ public struct DiagnosticReport: Codable, Sendable {
         // Never accept free-form server error messages, URLs, item titles or identifiers.
         let codecs: Set<String> = ["h264", "hevc", "aac", "ac3", "eac3", "alac", "mp3", "dts", "truehd", "opus"]
         let videoCodec = source?.MediaStreams?.first(where: { $0.Type == "Video" })?.Codec?.lowercased()
-        let audioCodec = source?.MediaStreams?.first(where: { $0.Type == "Audio" })?.Codec?.lowercased()
+        let audioCodec = source?.selectedAudio?.Codec?.lowercased()
         video = videoCodec.flatMap { codecs.contains($0) ? $0 : nil } ?? "unknown"
         audio = audioCodec.flatMap { codecs.contains($0) ? $0 : nil } ?? "unknown"
         let containers: Set<String> = ["mp4", "mkv", "mov", "m4v", "ts", "webm"]

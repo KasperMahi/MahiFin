@@ -9,6 +9,7 @@ final class AudioRouteTests: XCTestCase {
         XCTAssertEqual(PlaybackPolicy.decide(source, device: .init()).route, .direct)
         source.DefaultAudioStreamIndex = 2
         XCTAssertEqual(PlaybackPolicy.decide(source, device: .init()).route, .audioOnly)
+        XCTAssertEqual(DiagnosticReport(source: source, decision: PlaybackPolicy.decide(source, device: .init())).audio, "truehd")
         let server = URL(string: "https://example.invalid")!
         let account = Account(server: server, serverID: "s", userID: "u", name: "Invented")
         let api = try JellyfinClient(server: server, token: "fixture", deviceID: "fixture")

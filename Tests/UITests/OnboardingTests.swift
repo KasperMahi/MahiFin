@@ -26,11 +26,18 @@ final class OnboardingTests: XCTestCase {
         app.launch()
         let status = app.staticTexts["fixture.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["fixture.start"].exists)
+        #if os(iOS)
+        app.buttons["fixture.start"].tap()
+        #else
+        XCUIRemote.shared.press(.select)
+        #endif
         let playing = NSPredicate(format: "label == %@", "playing")
         expectation(for: playing, evaluatedWith: status)
         waitForExpectations(timeout: 20)
-        expectation(for: NSPredicate(format: "label == %@", "1 audio / 1 subtitles"), evaluatedWith: app.staticTexts["fixture.tracks"])
-        waitForExpectations(timeout: 5)
+        let tracks = app.staticTexts["fixture.tracks"]
+        let tracksReady = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "1 audio / 1 subtitles"), object: tracks)
+        XCTAssertEqual(XCTWaiter.wait(for: [tracksReady], timeout: 5), .completed, "Actual fixture tracks: \(tracks.label)")
         #if os(iOS)
         app.buttons["fixture.hideSubtitle"].tap()
         expectation(for: NSPredicate(format: "label == %@", "-1"), evaluatedWith: app.staticTexts["fixture.subtitle"])

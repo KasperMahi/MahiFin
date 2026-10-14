@@ -18,8 +18,8 @@ for platform, prefix in (("iOS", "iPhone"), ("tvOS", "Apple TV")):
     # rather than letting Xcode create unbooted test clones alongside the other platform.
     if device["state"] != "Booted":
         subprocess.run(["xcrun", "simctl", "boot", device["udid"]], check=True)
-    subprocess.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"], check=True)
+    subprocess.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"], check=True, timeout=300)
     try:
-        subprocess.run(["xcodebuild", "-project", "MahiFin.xcodeproj", "-scheme", f"MahiFin-{platform}", "-destination", f"platform={platform} Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-derivedDataPath", f"DerivedData/Smoke/{platform}", "-resultBundlePath", f"TestResults/{platform}.xcresult", "CODE_SIGNING_ALLOWED=NO", f"ARCHS={architecture}", "test"], check=True)
+        subprocess.run(["xcodebuild", "-project", "MahiFin.xcodeproj", "-scheme", f"MahiFin-{platform}", "-destination", f"platform={platform} Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-derivedDataPath", f"DerivedData/Smoke/{platform}", "-resultBundlePath", f"TestResults/{platform}.xcresult", "CODE_SIGNING_ALLOWED=NO", f"ARCHS={architecture}", "test"], check=True, timeout=900)
     finally:
         subprocess.run(["xcrun", "simctl", "shutdown", device["udid"]], check=False)
