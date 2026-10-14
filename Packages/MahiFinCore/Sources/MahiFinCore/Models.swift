@@ -60,11 +60,11 @@ public struct UserData: Codable, Sendable {
 }
 public struct Person: Codable, Sendable {
     public var Name: String
-    public var Type: String?
+    public var `Type`: String?
     public var Role: String?
 }
 public struct MediaStream: Codable, Sendable {
-    public var Type: String
+    public var `Type`: String
     public var Codec: String?
     public var Index: Int?
     public var Width: Int?
@@ -75,7 +75,7 @@ public struct MediaStream: Codable, Sendable {
     public var IsExternal: Bool?
     public var Language: String?
     public init(type: String, codec: String?, width: Int? = nil, range: String? = nil) {
-        Type = type; Codec = codec; Width = width; VideoRangeType = range
+        self.`Type` = type; Codec = codec; Width = width; VideoRangeType = range
     }
 }
 public struct MediaSource: Codable, Sendable {
@@ -96,7 +96,7 @@ public struct MediaItem: Codable, Identifiable, Sendable {
     public var id: String { Id }
     public var Id: String
     public var Name: String
-    public var Type: String?
+    public var `Type`: String?
     public var Overview: String?
     public var ProductionYear: Int?
     public var CommunityRating: Double?

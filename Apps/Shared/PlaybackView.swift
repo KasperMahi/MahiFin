@@ -158,7 +158,10 @@ struct NativePlayer: UIViewControllerRepresentable {
                 for _ in 0..<5 {
                     do { try await Task.sleep(for: .seconds(1)) } catch { return }
                     guard let self, !self.countdown.cancelled else { return }
-                    if self.countdown.tick(), let next = self.next { await self.open(next, model: model); return }
+                    if self.countdown.tick(), let next = self.next {
+                        self.countdownTask = nil
+                        await self.open(next, model: model); return
+                    }
                 }
             }
         } catch { model.show(error) }

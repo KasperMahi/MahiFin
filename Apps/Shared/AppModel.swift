@@ -17,9 +17,8 @@ import MahiFinCore
     let downloads: DownloadManager
     #endif
 
-    init() {
+    init() throws {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("MahiFin")
-        do {
             disk = try DiskStore(root: root)
             history = try HistoryQueue(disk: disk)
             deviceID = try disk.load(String.self, name: "device.json") ?? UUID().uuidString
@@ -34,10 +33,6 @@ import MahiFinCore
             #if os(iOS)
             downloads = try DownloadManager(root: root.appendingPathComponent("Downloads"))
             #endif
-        } catch {
-            // A durable store is essential. Surface a setup failure rather than silently discard account/history data.
-            fatalError("MahiFin protected storage initialization failed")
-        }
     }
     func client(for account: Account? = nil) throws -> JellyfinClient {
         guard let selected = account ?? active, let token = try tokens.read(account: selected.id) else { throw ClientError.unauthorized }
