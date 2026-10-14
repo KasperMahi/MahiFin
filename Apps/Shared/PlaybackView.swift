@@ -354,7 +354,7 @@ struct PlaybackView: View {
             if let player = session.player { NativePlayer(player: player).ignoresSafeArea(edges: .bottom) }
             if let alternative = session.alternative { AlternativePlayerView(player: alternative) }
             if let segment = session.activeSegment {
-                Button(segment.Type == "Intro" ? "player.skipIntro" : "player.skipCredits") { session.skipSegment() }
+                Button(LocalizedStringKey(segment.Type == "Intro" ? "player.skipIntro" : "player.skipCredits")) { session.skipSegment() }
             }
             if let next = session.next {
                 Text(next.Name)

@@ -5,7 +5,7 @@ All server URLs/accounts remain local. Use a disposable test user and synthetic 
 ## Setup and account isolation
 
 1. Open MahiFin.xcodeproj in Xcode 16.4+, choose MahiFin-iOS or MahiFin-tvOS, select your development team for physical devices. Minimum OS is 18.
-2. Connect to a Jellyfin 10.10+ HTTPS server (reverse-proxy base paths supported). Sign in with password; quit/relaunch. Verify no token in accounts.json/history.json or diagnostics. Inspect Keychain locally, never export it.
+2. Connect to a Jellyfin 10.10+ HTTPS server (reverse-proxy base paths supported). Sign in with password; quit/relaunch. Verify no token in accounts.json/history-state.json/manifest.json or diagnostics. Inspect Keychain locally, never export it.
 3. Add a second independent user through Settings. Switch. Verify previous posters, resume and favourites disappear; no owner/admin impersonation.
 4. On Apple TV kill app and cold launch: chooser must appear even with one profile. Background/foreground briefly: selected profile stays selected. On iPhone cold launch: last profile opens.
 5. Quick Connect: authorize displayed code using signed-in Jellyfin UI. Cancel, disable Quick Connect, allow two-minute client timeout, enter wrong password. Verify actionable localized errors and cancellation do not log in later.

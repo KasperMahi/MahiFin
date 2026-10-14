@@ -199,10 +199,10 @@ struct DetailView: View {
                 if let rating = current.CommunityRating { Label(String(format: "%.1f", rating), systemImage: "star.fill") }
                 Text(current.Overview ?? NSLocalizedString("detail.noOverview", comment: ""))
                 if current.Type != "Series" {
-                    NavigationLink { PlaybackView(item: current) } label: { Label(current.position > 0 ? "player.resume" : "player.play", systemImage: "play.fill") }
+                    NavigationLink { PlaybackView(item: current) } label: { Label(LocalizedStringKey(current.position > 0 ? "player.resume" : "player.play"), systemImage: "play.fill") }
                 }
-                Button(current.UserData?.Played == true ? "detail.unwatch" : "detail.watch") { mutate(favorite: false) }.disabled(busy)
-                Button(current.UserData?.IsFavorite == true ? "detail.unfavorite" : "detail.favorite") { mutate(favorite: true) }.disabled(busy)
+                Button(LocalizedStringKey(current.UserData?.Played == true ? "detail.unwatch" : "detail.watch")) { mutate(favorite: false) }.disabled(busy)
+                Button(LocalizedStringKey(current.UserData?.IsFavorite == true ? "detail.unfavorite" : "detail.favorite")) { mutate(favorite: true) }.disabled(busy)
                 #if os(iOS)
                 if current.Type != "Series" { Button("download.original") { downloadWarning = true } }
                 #endif

@@ -49,7 +49,7 @@ struct AlternativePlayerView: View {
                 Button { player.seek(player.seconds - 10) } label: { Image(systemName: "gobackward.10") }
                     .disabled(!player.bridge.seekable).accessibilityLabel("cast.seekBack")
                 Button { player.paused ? player.bridge.play() : player.bridge.pause() } label: { Image(systemName: player.paused ? "play.fill" : "pause.fill") }
-                    .accessibilityLabel(player.paused ? "player.play" : "player.pause")
+                    .accessibilityLabel(Text(LocalizedStringKey(player.paused ? "player.play" : "player.pause")))
                 Button { player.seek(player.seconds + 10) } label: { Image(systemName: "goforward.10") }
                     .disabled(!player.bridge.seekable).accessibilityLabel("cast.seekForward")
             }

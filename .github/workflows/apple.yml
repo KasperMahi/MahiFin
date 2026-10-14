@@ -33,9 +33,9 @@ jobs:
           command -v ffmpeg || brew install ffmpeg
           python3 scripts/generate_media.py
       - name: iOS unsigned simulator build
-        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-iOS -destination 'generic/platform=iOS Simulator' -derivedDataPath DerivedData/iOS CODE_SIGNING_ALLOWED=NO build
+        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-iOS -destination 'generic/platform=iOS Simulator' -clonedSourcePackagesDirPath "$PWD/DerivedData/SourcePackages" -derivedDataPath DerivedData/iOS CODE_SIGNING_ALLOWED=NO build
       - name: tvOS unsigned simulator build
-        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-tvOS -destination 'generic/platform=tvOS Simulator' -derivedDataPath DerivedData/tvOS CODE_SIGNING_ALLOWED=NO build
+        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-tvOS -destination 'generic/platform=tvOS Simulator' -clonedSourcePackagesDirPath "$PWD/DerivedData/SourcePackages" -derivedDataPath DerivedData/tvOS CODE_SIGNING_ALLOWED=NO build
       - name: Simulator availability
         run: xcrun simctl list devices available
       - name: Native onboarding UI smoke

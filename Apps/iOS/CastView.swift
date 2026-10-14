@@ -46,6 +46,7 @@ struct CastView: View {
     @ObservedObject var cast: CastModel
     @State private var pendingScope: String?
     @State private var pendingSeek: Double?
+    @State private var showControlConsent = false
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("cast.privacyBlock")
@@ -61,7 +62,7 @@ struct CastView: View {
             if cast.state == "receiver" && cast.hasMedia {
                 Text("cast.existingMedia")
                 HStack {
-                    Button(cast.paused ? "player.play" : "player.pause") {
+                    Button(LocalizedStringKey(cast.paused ? "player.play" : "player.pause")) {
                         if cast.paused { pendingSeek = nil; pendingScope = cast.bridge.mediaIdentity }
                         else { cast.bridge.pause() }
                     }
@@ -70,13 +71,14 @@ struct CastView: View {
                 }
             }
             if cast.state == "receiver" { Button("cast.disconnect") { cast.disconnect() } }
-        }.alert("cast.controlConsentTitle", isPresented: Binding(get: { pendingScope != nil }, set: { if !$0 { pendingScope = nil } })) {
+        }.alert("cast.controlConsentTitle", isPresented: $showControlConsent, presenting: pendingScope) { scope in
             Button("cancel", role: .cancel) { pendingScope = nil }
             Button("cast.controlConsentAccept") {
-                guard let scope = pendingScope, !scope.isEmpty, scope == cast.bridge.mediaIdentity else { pendingScope = nil; return }
+                guard pendingScope == scope, !scope.isEmpty, scope == cast.bridge.mediaIdentity else { pendingScope = nil; return }
                 if let pendingSeek { cast.bridge.seek(seconds: pendingSeek) } else { cast.bridge.play() }
                 pendingScope = nil
             }
-        } message: { Text("cast.controlConsentBody") }
+        } message: { _ in Text("cast.controlConsentBody") }
+        .onChange(of: pendingScope) { _, scope in showControlConsent = scope != nil }
     }
 }

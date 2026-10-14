@@ -97,6 +97,7 @@ import MahiFinCore
         guard !syncing, let account = active, let api = try? client(for: account) else { return }
         syncing = true; defer { syncing = false }
         let result = await HistorySync.run(queue: history, remote: api, account: account)
+        guard active?.id == account.id else { return }
         if let issue = result.issue { diagnostic = .init(source: nil, decision: nil, issue: issue) }
     }
 }
