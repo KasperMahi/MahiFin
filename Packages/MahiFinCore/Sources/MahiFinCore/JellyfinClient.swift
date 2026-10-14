@@ -160,5 +160,8 @@ public struct JellyfinClient: Sendable {
         guard let tag = item.ImageTags?["Primary"] else { return nil }
         return try request("Items/\(item.Id)/Images/Primary", query: ["Tag": tag, "MaxWidth": "400", "Quality": "85"])
     }
+    func sendNoContent(_ path: String, method: String, query: [String: String]) async throws {
+        _ = try await execute(path, method: method, query: query)
+    }
 }
 private extension String { var withSlash: String { "/" + self + "/" } }

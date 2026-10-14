@@ -55,6 +55,14 @@
 "detail.noOverview" = "Ingen beskrivelse tilgængelig.";
 "player.play" = "Afspil";
 "player.seek" = "Spol";
+"settings.engine" = "Afspilningsmotor";
+"engine.automatic" = "Automatisk";
+"engine.native" = "Indbygget / serverkopiering ved behov";
+"engine.alternative" = "Lokal VLC";
+"player.conversionTitle" = "Tillad videokonvertering til denne afspilning?";
+"player.conversionImpact" = "Videoen kan ikke bruge den valgte originale afspilning. Serverkonvertering bruger CPU og kan reducere 4K/HDR til H.264 SDR, højst 1080p / 8 Mb/s. Godkendelsen gælder kun dette element og denne kilde i dette forsøg. Annuller bevarer forbuddet mod videokonvertering.";
+"player.acceptConversion" = "Afspil med videokonvertering";
+"player.conversionDeclined" = "Videokonvertering blev afvist. Der blev ikke sendt en konverteringsanmodning.";
 "player.audio" = "Lydspor";
 "player.subtitles" = "Undertekster";
 "player.subtitlesOff" = "Fra";

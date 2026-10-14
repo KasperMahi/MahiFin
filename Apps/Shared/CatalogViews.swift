@@ -284,7 +284,12 @@ struct SettingsView: View {
                 Button("profiles.add") { model.addingAccount = true }
                 Button("profiles.chooser") { model.active = nil }
             }
-            Section("settings.playback") { Text("settings.policy"); Text("settings.hardware") }
+            Section("settings.playback") {
+                Picker("settings.engine", selection: Binding(get: { model.enginePreference }, set: { model.setEnginePreference($0) })) {
+                    ForEach(EnginePreference.allCases, id: \.self) { Text(LocalizedStringKey("engine." + $0.rawValue)).tag($0) }
+                }
+                Text("settings.policy"); Text("settings.hardware")
+            }
             #if os(iOS)
             Section("nav.downloads") {
                 Toggle("download.cellular", isOn: Binding(get: { model.cellularDownloads }, set: { model.setCellularDownloads($0) }))

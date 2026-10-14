@@ -25,8 +25,8 @@ import UIKit
             return .init(id: id, name: name, selected: row["selected"] as? Bool ?? false)
         }
     }
-    func open(url: URL, resume: Double) { bridge.openURL(url, resume: resume) }
-    func seek(_ seconds: Double) { bridge.seekSeconds(seconds) }
+    func open(url: URL, resume: Double) { bridge.open(url: url, resume: resume) }
+    func seek(_ seconds: Double) { bridge.seek(seconds: seconds) }
     func stop() { onEvent = nil; bridge.stop() }
 }
 struct LocalTrack: Identifiable { let id: Int; let name: String; let selected: Bool }
@@ -51,12 +51,12 @@ struct AlternativePlayerView: View {
                 Button { player.seek(player.seconds + 10) } label: { Image(systemName: "goforward.10") }
             }
             if !player.audio.isEmpty {
-                Picker("player.audio", selection: Binding(get: { player.audio.first(where: \.selected)?.id ?? -1 }, set: { player.bridge.selectAudio($0) })) {
+                Picker("player.audio", selection: Binding(get: { player.audio.first(where: \.selected)?.id ?? -1 }, set: { player.bridge.selectAudio(index: $0) })) {
                     ForEach(player.audio) { Text($0.name).tag($0.id) }
                 }
             }
             if !player.subtitles.isEmpty {
-                Picker("player.subtitles", selection: Binding(get: { player.subtitles.first(where: \.selected)?.id ?? -1 }, set: { player.bridge.selectSubtitle($0) })) {
+                Picker("player.subtitles", selection: Binding(get: { player.subtitles.first(where: \.selected)?.id ?? -1 }, set: { player.bridge.selectSubtitle(index: $0) })) {
                     Text("player.subtitlesOff").tag(-1)
                     ForEach(player.subtitles) { Text($0.name).tag($0.id) }
                 }

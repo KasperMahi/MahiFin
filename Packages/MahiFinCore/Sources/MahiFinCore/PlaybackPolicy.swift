@@ -17,6 +17,7 @@ public struct DeviceCapabilities: Sendable {
     public var alternativeContainers: Set<String> = ["mkv", "mp4", "mov", "m4v", "webm", "avi", "ts"]
     public var alternativeVideoCodecs: Set<String> = ["h264", "hevc", "mpeg4", "mpeg2video", "vp8", "vp9", "av1"]
     public var hdrAvailable = false
+    public var hdrFormats: Set<String> = []
     public init() {}
     public static var legacyCast: DeviceCapabilities {
         var value = DeviceCapabilities()
@@ -34,11 +35,19 @@ public enum PlaybackPolicy {
         if requiresSubtitleBurnIn { return decision(.needsVideoConsent, "subtitles") }
         if width > device.maxWidth { return decision(.needsVideoConsent, "video") }
         let hdr = video.VideoRangeType.map { !["SDR", "Unknown"].contains($0) } ?? false
-        if hdr && !device.hdrAvailable { return decision(.unsupported, "hdr.hardware") }
+        if hdr {
+            guard let format = video.VideoRangeType, device.hdrFormats.contains(format),
+                  ["HDR10", "HLG"].contains(format), codec == "hevc", device.videoCodecs.contains(codec),
+                  video.BitDepth == nil || video.BitDepth == 10,
+                  video.Profile?.lowercased().contains("main 10") == true || video.BitDepth == 10 else {
+                return decision(.unsupported, "hdr.hardware")
+            }
+            // Dolby Vision profiles and local-engine HDR are never inferred from a generic HDR flag.
+        }
         let container = source.Container?.lowercased() ?? ""
         let audio = streams.filter { $0.Type == "Audio" }
         let audioSupported = audio.isEmpty || audio.allSatisfy { device.audioCodecs.contains($0.Codec?.lowercased() ?? "") }
-        let alternative = device.alternativeAvailable && device.alternativeContainers.contains(container) && device.alternativeVideoCodecs.contains(codec)
+        let alternative = !hdr && device.alternativeAvailable && device.alternativeContainers.contains(container) && device.alternativeVideoCodecs.contains(codec)
         if !device.videoCodecs.contains(codec) { return alternative ? decision(.alternative, "video.local") : decision(.needsVideoConsent, "video") }
         if !device.nativeContainers.contains(container) {
             return alternative ? decision(.alternative, "container.local") : decision(.remux, "container")
@@ -95,7 +104,7 @@ public struct DiagnosticReport: Codable, Sendable {
         container = source?.Container.flatMap { containers.contains($0) ? $0 : nil } ?? "unknown"
         route = decision?.route.rawValue ?? "unknown"
         self.issue = ["none", "network", "auth", "player", "unsupported", "storage", "conflict"].contains(issue) ? issue : "unknown"
-        let reasons: Set<String> = ["source", "metadata", "subtitles", "video", "hdr.hardware", "container.local", "container", "audio", "original"]
+        let reasons: Set<String> = ["source", "metadata", "subtitles", "video", "hdr.hardware", "container.local", "video.local", "audio.local", "container", "audio", "original", "server.remux", "server.audioOnly", "server.video"]
         reason = decision.map { reasons.contains($0.reason) ? $0.reason : "unknown" } ?? "unknown"
         bitrate = source?.Bitrate.flatMap { $0 > 0 && $0 <= 1_000_000_000 ? $0 : nil }
         let video = source?.MediaStreams?.first(where: { $0.Type == "Video" })

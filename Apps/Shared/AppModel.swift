@@ -8,6 +8,7 @@ import MahiFinCore
     @Published var addingAccount = false
     @Published var diagnostic = DiagnosticReport(source: nil, decision: nil)
     @Published var cellularDownloads = false
+    @Published var enginePreference: EnginePreference = .automatic
     let disk: DiskStore
     let history: HistoryQueue
     let tokens = KeychainTokens()
@@ -29,6 +30,7 @@ import MahiFinCore
             accounts = try disk.load([Account].self, name: "accounts.json") ?? []
             let last = try disk.load(String.self, name: "active.json")
             cellularDownloads = try disk.load(Bool.self, name: "cellular.json") ?? false
+            enginePreference = try disk.load(EnginePreference.self, name: "engine.json") ?? .automatic
             #if os(tvOS)
             active = ProfilePolicy.launch(accounts: accounts, last: last, television: true)
             #else
@@ -73,6 +75,10 @@ import MahiFinCore
     }
     func setCellularDownloads(_ enabled: Bool) {
         do { try disk.save(enabled, name: "cellular.json"); cellularDownloads = enabled }
+        catch { show(ClientError.storage) }
+    }
+    func setEnginePreference(_ value: EnginePreference) {
+        do { try disk.save(value, name: "engine.json"); enginePreference = value }
         catch { show(ClientError.storage) }
     }
     func record(account: Account, item: MediaItem, seconds: Double, completed: Bool) async {

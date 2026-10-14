@@ -55,6 +55,14 @@
 "detail.noOverview" = "No description available.";
 "player.play" = "Play";
 "player.seek" = "Seek";
+"settings.engine" = "Playback engine";
+"engine.automatic" = "Automatic";
+"engine.native" = "Native / server copy fallback";
+"engine.alternative" = "Local VLC";
+"player.conversionTitle" = "Allow video conversion for this playback?";
+"player.conversionImpact" = "The video cannot use the selected original route. Server video conversion uses CPU and may reduce 4K/HDR to H.264 SDR, at most 1080p / 8 Mb/s. This approval applies only to this item and source for this attempt. Cancel keeps video conversion disabled.";
+"player.acceptConversion" = "Play with video conversion";
+"player.conversionDeclined" = "Video conversion was declined. No conversion request was issued.";
 "player.audio" = "Audio track";
 "player.subtitles" = "Subtitles";
 "player.subtitlesOff" = "Off";

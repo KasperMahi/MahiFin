@@ -92,6 +92,9 @@ public struct MediaStream: Codable, Sendable {
     public var Height: Int?
     public var VideoRangeType: String?
     public var Profile: String?
+    public var Level: Double?
+    public var BitDepth: Int?
+    public var VideoDoViProfile: Int?
     public var IsDefault: Bool?
     public var IsExternal: Bool?
     public var Language: String?

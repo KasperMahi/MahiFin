@@ -12,12 +12,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) BOOL seekable;
 @property(nonatomic, readonly) NSArray<NSDictionary *> *audioTracks;
 @property(nonatomic, readonly) NSArray<NSDictionary *> *subtitleTracks;
-- (void)openURL:(NSURL *)url resume:(double)seconds;
+- (void)openURL:(NSURL *)url resume:(double)seconds NS_SWIFT_NAME(open(url:resume:));
 - (void)play;
 - (void)pause;
-- (void)seekSeconds:(double)seconds;
-- (void)selectAudio:(NSInteger)index;
-- (void)selectSubtitle:(NSInteger)index;
+- (void)seekSeconds:(double)seconds NS_SWIFT_NAME(seek(seconds:));
+- (void)selectAudio:(NSInteger)index NS_SWIFT_NAME(selectAudio(index:));
+- (void)selectSubtitle:(NSInteger)index NS_SWIFT_NAME(selectSubtitle(index:));
 - (void)stop;
 @end
 NS_ASSUME_NONNULL_END

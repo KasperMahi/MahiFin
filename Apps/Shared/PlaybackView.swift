@@ -17,6 +17,7 @@ struct NativePlayer: UIViewControllerRepresentable {
 @MainActor final class PlaybackSession: ObservableObject {
     @Published var player: AVPlayer?
     @Published var alternative: AlternativePlayer?
+    @Published var consentRequest: PendingVideoConsent?
     @Published var failure: String?
     @Published var loading = true
     @Published var next: MediaItem?
@@ -43,8 +44,10 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var networkTask: Task<Void, Never>?
     private var generation = UUID()
     private var openOperation = UUID()
+    private var conversionActive = false
+    private var playMethod = "DirectPlay"
 
-    func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil) async {
+    func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil, consent: VideoConsent? = nil) async {
         let operation = UUID(); openOperation = operation
         await stop(cancelOpening: false)
         guard openOperation == operation, !Task.isCancelled else { return }
@@ -52,12 +55,13 @@ struct NativePlayer: UIViewControllerRepresentable {
         let currentGeneration = generation
         stopped = false; completed = false; next = nil; countdown = .init(); loading = true; failure = nil
         activeSegment = nil; segments = []
+        consentRequest = nil; conversionActive = false; playMethod = "DirectPlay"
         self.item = item; self.model = model; account = model.active; lastReport = -15
         guard let account else { failure = NSLocalizedString("error.auth", comment: ""); loading = false; return }
         do {
             let url: URL
             var decision: PlaybackDecision
-            var capabilities = DeviceCapabilities(); capabilities.alternativeAvailable = true
+            let capabilities = NativeCapabilities.probe(preference: model.enginePreference)
             var resume = item.position
             let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
             resume = ResumePosition.local(item: item, pending: pending)
@@ -81,8 +85,20 @@ struct NativePlayer: UIViewControllerRepresentable {
                 source = selected; sessionID = info.PlaySessionId ?? UUID().uuidString
                 decision = PlaybackPolicy.decide(selected, device: capabilities)
                 model.diagnostic = DiagnosticReport(source: selected, decision: decision)
-                guard decision.canStart else { throw ClientError.unavailable }
-                url = try client.directURL(item: item.Id, source: selected)
+                if decision.route == .needsVideoConsent && consent == nil {
+                    consentRequest = .init(account: account.id, item: item.Id, source: selected.Id)
+                    loading = false; return
+                }
+                if decision.route == .remux || decision.route == .audioOnly || decision.route == .needsVideoConsent {
+                    let mode: ConversionMode = decision.route == .remux ? .remux : (decision.route == .audioOnly ? .audioOnly : .video)
+                    url = try client.conversionURL(account: account, item: item.Id, source: selected, session: sessionID, mode: mode, consent: consent)
+                    conversionActive = true; playMethod = mode == .remux ? "DirectStream" : "Transcode"
+                    // Server produces native HLS. Consent never changes the original policy grant globally.
+                    decision = .init(route: .direct, reason: "server." + mode.rawValue)
+                } else {
+                    guard decision.canStart else { throw ClientError.unavailable }
+                    url = try client.directURL(item: item.Id, source: selected)
+                }
             }
             try Task.checkCancellation()
             guard generation == currentGeneration, !stopped else { return }
@@ -105,7 +121,7 @@ struct NativePlayer: UIViewControllerRepresentable {
                 }
                 if online, let api {
                     segments = (try? await api.segments(item: item.Id)) ?? []
-                    await enqueueReport(client: api, event: SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing").value
+                    await enqueueReport(client: api, event: eventFor(item: item, seconds: resume, paused: false), endpoint: "Playing").value
                 }
                 guard generation == currentGeneration, !stopped else { return }
                 local.open(url: url, resume: resume)
@@ -134,7 +150,7 @@ struct NativePlayer: UIViewControllerRepresentable {
             if resume > 0 { await player.seek(to: CMTime(seconds: resume, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) }
             guard generation == currentGeneration, !stopped else { return }
             if online, let api {
-                await enqueueReport(client: api, event: SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: resume, paused: false), endpoint: "Playing").value
+                await enqueueReport(client: api, event: eventFor(item: item, seconds: resume, paused: false), endpoint: "Playing").value
             }
             guard generation == currentGeneration, !stopped else { return }
             failureObserver = playerItem.observe(\.status, options: [.new]) { [weak self] value, _ in
@@ -181,7 +197,8 @@ struct NativePlayer: UIViewControllerRepresentable {
         lastReport = seconds
         // Capture immutable session identity before an await permits a stop/profile switch.
         let client = online ? api : nil
-        let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: paused)
+        var event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: paused)
+        event.PlayMethod = playMethod
         let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Progress") }
         await model.record(account: account, item: item, seconds: seconds, completed: completed)
         await task?.value
@@ -197,6 +214,8 @@ struct NativePlayer: UIViewControllerRepresentable {
         if let playbackFailureObserver { NotificationCenter.default.removeObserver(playbackFailureObserver); self.playbackFailureObserver = nil }
         failureObserver = nil; rateObserver = nil
         let stoppedPlayer = player
+        let conversionClient = conversionActive ? api : nil
+        let conversionSession = sessionID
         let stoppedAlternative = alternative
         let lastSeconds = stoppedAlternative?.seconds ?? stoppedPlayer?.currentTime().seconds ?? 0
         stoppedAlternative?.stop(); alternative = nil
@@ -204,11 +223,18 @@ struct NativePlayer: UIViewControllerRepresentable {
         if stoppedPlayer != nil || stoppedAlternative != nil, let item, let account, let model {
             let seconds = lastSeconds
             let client = online ? api : nil
-            let event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true)
+            var event = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: true)
+            event.PlayMethod = playMethod
             let task = client.map { enqueueReport(client: $0, event: event, endpoint: "Playing/Stopped") }
             await model.record(account: account, item: item, seconds: seconds, completed: completed)
             await task?.value
         }
+        if let conversionClient { try? await conversionClient.stopConversion(session: conversionSession) }
+    }
+    private func eventFor(item: MediaItem, seconds: Double, paused: Bool) -> SessionEvent {
+        var value = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: paused)
+        value.PlayMethod = playMethod
+        return value
     }
     private func enqueueReport(client: JellyfinClient, event: SessionEvent, endpoint: String) -> Task<Void, Never> {
         let preceding = networkTask
@@ -220,6 +246,13 @@ struct NativePlayer: UIViewControllerRepresentable {
         return task
     }
     func cancelNext() { countdown.cancel(); countdownTask?.cancel(); next = nil }
+    func approveVideo() {
+        guard let request = consentRequest, let item, let model, model.active?.id == request.account else { return }
+        let consent = VideoConsent.accept(account: request.account, item: request.item, source: request.source)
+        consentRequest = nil
+        Task { await open(item, model: model, consent: consent) }
+    }
+    func declineVideo() { consentRequest = nil; loading = false; failure = NSLocalizedString("player.conversionDeclined", comment: "") }
     func skipSegment() {
         guard let segment = activeSegment else { return }
         if let alternative { alternative.seek(Double(segment.EndTicks) / 10_000_000); return }
@@ -311,6 +344,10 @@ struct PlaybackView: View {
             if session.player != nil { AirPlayPicker().frame(width: 44, height: 44).accessibilityLabel("player.airplay") }
             #endif
         }.navigationTitle(item.Name)
+        .alert("player.conversionTitle", isPresented: Binding(get: { session.consentRequest != nil }, set: { if !$0 { session.declineVideo() } })) {
+            Button("cancel", role: .cancel) { session.declineVideo() }
+            Button("player.acceptConversion") { session.approveVideo() }
+        } message: { Text("player.conversionImpact") }
         .task { await session.open(item, model: model, localURL: localURL, localSource: localSource) }
         .onDisappear { session.cancelNext(); Task { await session.stop() } }
         .onChange(of: scenePhase) { _, phase in
