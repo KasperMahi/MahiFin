@@ -16,4 +16,4 @@ Official googlecast/google-cast-ios-sdk 4.8.6, GoogleCastDynamic product; exact 
 
 Research references: Jellyfin server/API (GPL-2.0), Swiftfin (MPL-2.0), jellyfin-sdk-swift (MIT), jellyfin-chromecast (GPL-2.0), Google Cast documentation. HTTP interoperability is implemented independently; these projects are not redistributed.
 
-CI uses GitHub checkout and macOS runner tools. Re-audit before adding a player/Cast SDK. Retain package licenses and covered-file source/provenance when dependencies change. Public distribution requires branding, codec and App Store review.
+CI uses GitHub checkout and macOS runner tools. Re-audit before changing SDK pins or adding dependencies. Retain package licenses and covered-file source/provenance when dependencies change. Public distribution requires branding, codec and App Store review.

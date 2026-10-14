@@ -65,7 +65,9 @@ struct NativePlayer: UIViewControllerRepresentable {
         do {
             let url: URL
             var decision: PlaybackDecision
-            let capabilities = NativeCapabilities.probe(preference: model.enginePreference)
+            // An offline original cannot use a server fallback. Select an available local
+            // engine even when the user's online preference would otherwise request remux.
+            let capabilities = NativeCapabilities.probe(preference: localURL == nil ? model.enginePreference : .automatic)
             var resume = item.position
             let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
             let latest = await model.history.latest(account: account.id, item: item.Id)
@@ -263,8 +265,9 @@ struct NativePlayer: UIViewControllerRepresentable {
         return task
     }
     func cancelNext() { countdown.cancel(); countdownTask?.cancel(); next = nil }
-    func approveVideo() {
-        guard let request = consentRequest, let item, let model, model.active?.id == request.account else { return }
+    func approveVideo(_ request: PendingVideoConsent) {
+        guard consentRequest?.id == request.id, let item, let model, model.active?.id == request.account,
+              item.Id == request.item, source?.Id == request.source else { return }
         let consent = VideoConsent.accept(account: request.account, item: request.item, source: request.source)
         consentRequest = nil
         Task { await open(item, model: model, consent: consent) }
@@ -362,10 +365,7 @@ struct PlaybackView: View {
             if session.player != nil { AirPlayPicker().frame(width: 44, height: 44).accessibilityLabel("player.airplay") }
             #endif
         }.navigationTitle(session.currentTitle.isEmpty ? item.Name : session.currentTitle)
-        .alert("player.conversionTitle", isPresented: Binding(get: { session.consentRequest != nil }, set: { if !$0 { session.declineVideo() } })) {
-            Button("cancel", role: .cancel) { session.declineVideo() }
-            Button("player.acceptConversion") { session.approveVideo() }
-        } message: { Text("player.conversionImpact") }
+        .videoConversionConsent(request: $session.consentRequest, accept: session.approveVideo, decline: session.declineVideo)
         .task { await session.open(item, model: model, localURL: localURL, localSource: localSource) }
         .onDisappear { session.cancelNext(); Task { await session.stop() } }
         .onChange(of: scenePhase) { _, phase in

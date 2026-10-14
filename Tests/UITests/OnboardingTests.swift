@@ -32,13 +32,43 @@ final class OnboardingTests: XCTestCase {
         expectation(for: NSPredicate(format: "label == %@", "1 audio / 1 subtitles"), evaluatedWith: app.staticTexts["fixture.tracks"])
         waitForExpectations(timeout: 5)
         #if os(iOS)
+        app.buttons["fixture.hideSubtitle"].tap()
+        expectation(for: NSPredicate(format: "label == %@", "-1"), evaluatedWith: app.staticTexts["fixture.subtitle"])
+        waitForExpectations(timeout: 5)
+        app.buttons["fixture.selectSubtitle"].tap()
+        expectation(for: NSPredicate(format: "label == %@", "0"), evaluatedWith: app.staticTexts["fixture.subtitle"])
+        waitForExpectations(timeout: 5)
         app.buttons["fixture.seek"].tap()
+        expectation(for: NSPredicate(format: "label MATCHES %@", "^(1[6-9]|2[0-9])$"), evaluatedWith: app.staticTexts["fixture.position"])
+        waitForExpectations(timeout: 5)
         #endif
         // Real libVLC callbacks drive EOF; no fake timer/metadata marks completion.
         expectation(for: NSPredicate(format: "label == %@", "ended"), evaluatedWith: status)
-        waitForExpectations(timeout: 25)
+        waitForExpectations(timeout: 35)
     }
     #if os(iOS)
+    func testVideoConversionRequiresExplicitAcceptAndCancelConstructsNothing() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--consent-fixture", "-AppleLanguages", "(en)"]
+        app.launch()
+        let request = app.buttons["consent.request"]
+        XCTAssertTrue(request.waitForExistence(timeout: 15))
+        request.tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["consent.count"].label, "Encoding URLs: 0")
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertEqual(app.staticTexts["consent.result"].label, "declined")
+        XCTAssertEqual(app.staticTexts["consent.count"].label, "Encoding URLs: 0")
+        request.tap()
+        app.alerts.buttons["Play with video conversion"].tap()
+        XCTAssertEqual(app.staticTexts["consent.result"].label, "accepted")
+        XCTAssertEqual(app.staticTexts["consent.count"].label, "Encoding URLs: 1")
+        // Approval is not a persisted preference: the next attempt prompts again.
+        request.tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        app.alerts.buttons["Cancel"].tap()
+        XCTAssertEqual(app.staticTexts["consent.count"].label, "Encoding URLs: 1")
+    }
     func testInsecureURLShowsErrorWithoutNetworkAuthentication() {
         let app = launch()
         let server = app.textFields["server.url"]

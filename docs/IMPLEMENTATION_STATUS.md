@@ -58,11 +58,13 @@ R1 first compiler run resolved binary and built Obj-C, then failed Swift importe
 
 Iteration 2 passed 22 core tests, then failed app access to synthesized internal decision initializer (repaired). R4 official Cast SDK discovery/configured-ID/session controls are implemented but compiler/hardware evidence pending. Authentication/media load remains BLOCKED by confirmed receiver token logging and automatic conversion negotiation, rather than a guessed ID. No token envelope is transmitted. See new decision record for exact source/exit tests.
 
-1. Expand simulator UI smoke beyond onboarding and add player/download lifecycle tests. Final code/compiler/test iteration is green at the run above.
+Current pending R5 follow-up: atomic queue/resume snapshot persistence, selective conflict sync, late/duplicate playback ledger, original-size HTTP 206 validation, current title/seek accessibility, and source-scoped existing-Cast control consent. A separate follow-up adds shared production consent-dialog UI tests, unique request identity, offline engine selection independent of online preference, and selected/default-audio-only routing to avoid converting unused tracks. These are implemented/test-authored; CI evidence will be recorded after execution.
+
+1. Finish latest CI and record exact core/iOS/tvOS runtime results; expand catalog/download lifecycle and track-rendering UI tests.
 2. Live API fixtures/integration across 10.10/10.11/12, metadata/permissions/Quick Connect/media profiles.
 3. Real native-compatible playback/offline/AirPlay acceptance on iPhone and Apple TV; trusted subtitle/marker behavior.
-4. Integrate licensed alternative engine/remux/audio conversion with exact no-video-copy safeguards; explicit per-attempt video consent before any conversion request.
-5. Verified Google Cast sender/receiver lifecycle and secure auth, then legacy receiver hardware gate.
+4. Validate implemented alternative/copy/audio/video routes with the larger synthetic codec matrix and live ffmpeg audit; finish external subtitles/full preferences and distribution materials.
+5. Fix/validate deployed receiver credential logging and implicit conversion, then enable Jellyfin Cast authorization/load/history and legacy receiver hardware tests.
 6. HDR/device capability, advanced subtitles, season/backdrop presentation, focus/accessibility polish.
 
 Exact steps: [MANUAL_TESTS.md](MANUAL_TESTS.md). Reproduction commands: README. Resume work: PROGRESS.md + Git history. No unchecked acceptance row is claimed complete.

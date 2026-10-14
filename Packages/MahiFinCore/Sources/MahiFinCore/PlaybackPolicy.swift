@@ -47,7 +47,8 @@ public enum PlaybackPolicy {
         }
         let container = source.Container?.lowercased() ?? ""
         let audio = streams.filter { $0.Type == "Audio" }
-        let audioSupported = audio.isEmpty || audio.allSatisfy { device.audioCodecs.contains($0.Codec?.lowercased() ?? "") }
+        // An unused incompatible language track must not trigger unnecessary audio conversion.
+        let audioSupported = audio.isEmpty || device.audioCodecs.contains(source.selectedAudio?.Codec?.lowercased() ?? "")
         let alternative = !hdr && device.alternativeAvailable && device.alternativeContainers.contains(container) && device.alternativeVideoCodecs.contains(codec)
         if !device.videoCodecs.contains(codec) { return alternative ? decision(.alternative, "video.local") : decision(.needsVideoConsent, "video") }
         if !device.nativeContainers.contains(container) {

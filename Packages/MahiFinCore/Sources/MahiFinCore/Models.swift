@@ -109,6 +109,8 @@ public struct MediaSource: Codable, Sendable {
     public var Size: Int64?
     public var Bitrate: Int?
     public var MediaStreams: [MediaStream]?
+    public var DefaultAudioStreamIndex: Int?
+    public var DefaultSubtitleStreamIndex: Int?
     public var SupportsDirectPlay: Bool?
     public var IsRemote: Bool?
     public var RequiresOpening: Bool?
@@ -116,6 +118,11 @@ public struct MediaSource: Codable, Sendable {
     public init(id: String, container: String?, streams: [MediaStream]) {
         Id = id; Container = container; MediaStreams = streams
         VideoType = "VideoFile"; IsRemote = false; RequiresOpening = false
+    }
+    public var selectedAudio: MediaStream? {
+        let audio = MediaStreams?.filter { $0.Type == "Audio" } ?? []
+        if let index = DefaultAudioStreamIndex { return audio.first { $0.Index == index } }
+        return audio.first(where: { $0.IsDefault == true }) ?? audio.first
     }
 }
 public struct MediaItem: Codable, Identifiable, Sendable {

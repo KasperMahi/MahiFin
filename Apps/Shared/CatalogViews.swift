@@ -264,8 +264,8 @@ struct DetailView: View {
             let api = try model.client()
             let info = try await api.playbackInfo(user: account.userID, item: item.Id)
             guard info.MediaSources.count == 1, let source = info.MediaSources.first else { throw ClientError.unavailable }
-            // Only native-playable originals accepted while local alternative engine is unavailable.
-            var capabilities = DeviceCapabilities(); capabilities.alternativeAvailable = true
+            // Offline eligibility must use actual local capabilities, independent of online engine preference.
+            let capabilities = NativeCapabilities.probe(preference: .automatic)
             guard PlaybackPolicy.decide(source, device: capabilities).canStart else { throw ClientError.unavailable }
             try model.downloads.enqueue(account: account, item: current, source: source, request: api.originalRequest(item: item.Id), cellular: model.cellularDownloads)
         } catch { model.show(error) }

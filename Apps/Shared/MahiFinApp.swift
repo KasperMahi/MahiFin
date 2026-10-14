@@ -18,6 +18,8 @@ import SwiftUI
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("--vlc-fixture") {
                         PlaybackFixtureView().preferredColorScheme(.dark)
+                    } else if ProcessInfo.processInfo.arguments.contains("--consent-fixture") {
+                        ConversionConsentFixtureView().preferredColorScheme(.dark)
                     } else {
                         application(model)
                     }

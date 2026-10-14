@@ -18,7 +18,7 @@ public struct VideoConsent: Sendable {
     }
 }
 public struct PendingVideoConsent: Identifiable, Sendable {
-    public var id: String { item + ":" + source }
+    public let id = UUID()
     public let account: String
     public let item: String
     public let source: String
@@ -39,6 +39,7 @@ extension JellyfinClient {
             "EnableAutoStreamCopy": "true", "SubtitleStreamIndex": "-1", "SubtitleMethod": "External",
             "AlwaysBurnInSubtitleWhenTranscoding": "false"
         ]
+        if let index = source.selectedAudio?.Index { query["AudioStreamIndex"] = String(index) }
         if mode == .video { query["MaxWidth"] = "1920"; query["MaxHeight"] = "1080"; query["VideoBitRate"] = "8000000" }
         // Copy is an explicit ffmpeg video codec in the audited 10.10 API, not merely permission to copy.
         // No video sizing/rate/deinterlace/tone-map constraint is ever added for remux/audio-only.

@@ -1,4 +1,4 @@
-"""Deterministically generate a dependency-free, two-target Xcode project."""
+"""Deterministically generate two native targets with explicitly pinned SDK dependencies."""
 from pathlib import Path
 import hashlib
 import plistlib

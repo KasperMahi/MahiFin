@@ -28,7 +28,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
                 guard let self else { return }
                 for task in activeTasks {
                     guard let id = task.taskDescription.flatMap(UUID.init(uuidString:)), let download = task as? URLSessionDownloadTask else { task.cancel(); continue }
-                    guard self.records.contains(where: { $0.id == id && $0.taskID == task.taskIdentifier && $0.state != .complete }) else { task.cancel(); continue }
+                    guard self.records.contains(where: { $0.id == id && $0.taskID == task.taskIdentifier && $0.state == .downloading }) else { task.cancel(); continue }
                     self.tasks[id] = download
                 }
                 for index in self.records.indices where self.records[index].state == .downloading && self.tasks[self.records[index].id] == nil {
