@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import MahiFinCore
 
 @MainActor final class AlternativePlayer: ObservableObject {
     let bridge = MFVLCBridge()
@@ -8,11 +9,15 @@ import UIKit
     @Published var paused = true
     @Published var audio: [LocalTrack] = []
     @Published var subtitles: [LocalTrack] = []
+    @Published private(set) var resumePending = false
+    private var resumeGate = ResumeGate(position: 0)
+    var historySeconds: Double { resumeGate.stopPosition(seconds: seconds) }
     var onEvent: ((String) -> Void)?
     init() {
         bridge.onEvent = { [weak self] event, seconds, duration, paused in
             guard let self else { return }
             self.seconds = seconds; self.duration = duration; self.paused = paused
+            self.resumePending = !self.resumeGate.observe(seconds: seconds, duration: duration)
             self.audio = self.tracks(self.bridge.audioTracks)
             self.subtitles = self.tracks(self.bridge.subtitleTracks)
             self.onEvent?(event)
@@ -25,7 +30,10 @@ import UIKit
             return .init(id: id, name: name, selected: row["selected"] as? Bool ?? false)
         }
     }
-    func open(url: URL, resume: Double) { bridge.open(url: url, resume: resume) }
+    func open(url: URL, resume: Double) {
+        resumeGate = ResumeGate(position: resume); resumePending = resume.isFinite && resume > 0
+        bridge.open(url: url, resume: resume)
+    }
     func seek(_ seconds: Double) { bridge.seek(seconds: seconds) }
     func stop() { onEvent = nil; bridge.stop() }
 }

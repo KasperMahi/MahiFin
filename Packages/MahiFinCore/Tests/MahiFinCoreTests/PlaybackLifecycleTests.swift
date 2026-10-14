@@ -2,6 +2,17 @@ import XCTest
 @testable import MahiFinCore
 
 final class PlaybackLifecycleTests: XCTestCase {
+    func testAlternativePrerollAndEarlyStopPreserveSavedResume() {
+        var gate = ResumeGate(position: 720)
+        XCTAssertFalse(gate.observe(seconds: 0, duration: 2400))
+        XCTAssertEqual(gate.stopPosition(seconds: 0), 720)
+        XCTAssertFalse(gate.observe(seconds: .nan, duration: 2400))
+        XCTAssertTrue(gate.observe(seconds: 719, duration: 2400))
+        XCTAssertEqual(gate.stopPosition(seconds: 719), 719)
+        // Once settled, an intentional seek back to zero is real activity.
+        XCTAssertTrue(gate.observe(seconds: 0, duration: 2400))
+        XCTAssertEqual(gate.stopPosition(seconds: 0), 0)
+    }
     func testLateOldEngineCannotCompleteOrStopReplacement() {
         var ledger = PlaybackLedger()
         let first = ledger.begin(position: 720)

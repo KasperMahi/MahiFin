@@ -205,6 +205,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     }
     func checkpoint(force: Bool) async {
         guard !stopped, !reporting, player != nil || alternative != nil, let item, let account, let model else { return }
+        guard alternative?.resumePending != true else { return }
         let seconds = alternative?.seconds ?? player?.currentTime().seconds ?? 0
         let paused = alternative?.paused ?? (player?.rate == 0)
         guard seconds.isFinite else { return }
@@ -235,7 +236,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         let conversionClient = conversionActive ? api : nil
         let conversionSession = sessionID
         let stoppedAlternative = alternative
-        let lastSeconds = stoppedAlternative?.seconds ?? stoppedPlayer?.currentTime().seconds ?? 0
+        let lastSeconds = stoppedAlternative?.historySeconds ?? stoppedPlayer?.currentTime().seconds ?? 0
         stoppedAlternative?.stop(); alternative = nil
         player = nil // Detach before await so an older stop cannot clear a replacement player.
         if stoppedPlayer != nil || stoppedAlternative != nil, let item, let account, let model {
