@@ -57,27 +57,47 @@ public struct HistoryEvent: Codable, Equatable, Sendable, Identifiable {
 }
 public actor HistoryQueue {
     private let disk: DiskStore
-    private var events: [HistoryEvent]
-    private var sequence: Int64
+    private struct State: Codable {
+        var events: [HistoryEvent]
+        var snapshots: [String: HistoryEvent]
+        var sequence: Int64
+    }
+    private var state: State
+    private static func key(account: String, item: String) -> String { account + "\u{1f}" + item }
     public init(disk: DiskStore) throws {
         self.disk = disk
-        events = try disk.load([HistoryEvent].self, name: "history.json") ?? []
-        sequence = try disk.load(Int64.self, name: "sequence.json") ?? 0
+        if let stored = try disk.load(State.self, name: "history-state.json") { state = stored }
+        else {
+            let events = try disk.load([HistoryEvent].self, name: "history.json") ?? []
+            let sequence = try disk.load(Int64.self, name: "sequence.json") ?? 0
+            var snapshots: [String: HistoryEvent] = [:]
+            for event in events { snapshots[Self.key(account: event.account, item: event.item)] = event }
+            state = State(events: events, snapshots: snapshots, sequence: sequence)
+        }
     }
     public func record(account: String, item: String, seconds: Double, completed: Bool, device: String, clock: any Clock = SystemClock()) throws {
-        sequence += 1
-        try disk.save(sequence, name: "sequence.json")
-        let event = HistoryEvent(account: account, item: item, ticks: SessionEvent.ticks(seconds), completed: completed, occurred: clock.now(), sequence: sequence, device: device)
-        events.removeAll { $0.account == account && $0.item == item }
-        events.append(event); try persist()
+        var next = state; next.sequence += 1
+        let event = HistoryEvent(account: account, item: item, ticks: SessionEvent.ticks(seconds), completed: completed, occurred: clock.now(), sequence: next.sequence, device: device)
+        next.events.removeAll { $0.account == account && $0.item == item }
+        next.events.append(event); next.snapshots[Self.key(account: account, item: item)] = event
+        try disk.save(next, name: "history-state.json"); state = next
     }
     public func pending(account: String) -> [HistoryEvent] {
-        events.filter { $0.account == account }.sorted { $0.sequence < $1.sequence }
+        state.events.filter { $0.account == account }.sorted { $0.sequence < $1.sequence }
     }
-    public func acknowledge(_ event: HistoryEvent) throws {
-        events.removeAll { $0.id == event.id }; try persist()
+    public func latest(account: String, item: String) -> HistoryEvent? {
+        state.snapshots[Self.key(account: account, item: item)]
     }
-    private func persist() throws { try disk.save(events, name: "history.json") }
+    public func acknowledge(_ event: HistoryEvent, serverItem: MediaItem? = nil, serverDate: Date? = nil) throws {
+        var next = state; next.events.removeAll { $0.id == event.id }
+        let key = Self.key(account: event.account, item: event.item)
+        if next.snapshots[key]?.id == event.id, let serverItem, let serverDate {
+            let ticks = serverItem.UserData?.PlaybackPositionTicks ?? 0
+            next.snapshots[key] = HistoryEvent(account: event.account, item: event.item, ticks: ticks,
+                completed: serverItem.UserData?.Played == true && ticks == 0, occurred: serverDate, sequence: event.sequence, device: "server")
+        }
+        try disk.save(next, name: "history-state.json"); state = next
+    }
 }
 public enum SyncResolution: Equatable { case upload, discard, conflict }
 public enum HistoryConflict {

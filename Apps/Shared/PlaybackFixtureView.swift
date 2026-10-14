@@ -9,6 +9,7 @@ struct PlaybackFixtureView: View {
         VStack {
             Text("Synthetic MKV integration test")
             Text(status).accessibilityIdentifier("fixture.status")
+            Text("\(player.audio.count) audio / \(player.subtitles.count) subtitles").accessibilityIdentifier("fixture.tracks")
             AlternativePlayerView(player: player)
             Button("Seek to six seconds") { player.seek(6) }.accessibilityIdentifier("fixture.seek")
         }.onAppear {

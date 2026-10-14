@@ -67,6 +67,9 @@
 "cast.seekBack" = "Seek back 10 seconds";
 "cast.seekForward" = "Seek forward 10 seconds";
 "cast.disconnect" = "Disconnect receiver";
+"cast.controlConsentTitle" = "Allow possible receiver video conversion?";
+"cast.controlConsentAccept" = "Allow conversion for this control";
+"cast.controlConsentBody" = "This media was loaded outside MahiFin, so its conversion policy is unknown. Resume/seek can restart the receiver's server video conversion and consume CPU. This approval is for this command on the current receiver media session only. Cancel sends no command.";
 "settings.engine" = "Playback engine";
 "engine.automatic" = "Automatic";
 "engine.native" = "Native / server copy fallback";

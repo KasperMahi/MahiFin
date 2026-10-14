@@ -18,6 +18,7 @@ struct NativePlayer: UIViewControllerRepresentable {
     @Published var player: AVPlayer?
     @Published var alternative: AlternativePlayer?
     @Published var consentRequest: PendingVideoConsent?
+    @Published var currentTitle = ""
     @Published var failure: String?
     @Published var loading = true
     @Published var next: MediaItem?
@@ -46,15 +47,18 @@ struct NativePlayer: UIViewControllerRepresentable {
     private var openOperation = UUID()
     private var conversionActive = false
     private var playMethod = "DirectPlay"
+    private var ledger = PlaybackLedger()
+    private var selectedDecision: PlaybackDecision?
 
     func open(_ item: MediaItem, model: AppModel, localURL: URL? = nil, localSource: MediaSource? = nil, consent: VideoConsent? = nil) async {
         let operation = UUID(); openOperation = operation
         await stop(cancelOpening: false)
         guard openOperation == operation, !Task.isCancelled else { return }
-        generation = UUID()
+        generation = ledger.begin(position: 0)
         let currentGeneration = generation
         stopped = false; completed = false; next = nil; countdown = .init(); loading = true; failure = nil
         activeSegment = nil; segments = []
+        currentTitle = item.Name; selectedDecision = nil
         consentRequest = nil; conversionActive = false; playMethod = "DirectPlay"
         self.item = item; self.model = model; account = model.active; lastReport = -15
         guard let account else { failure = NSLocalizedString("error.auth", comment: ""); loading = false; return }
@@ -64,7 +68,9 @@ struct NativePlayer: UIViewControllerRepresentable {
             let capabilities = NativeCapabilities.probe(preference: model.enginePreference)
             var resume = item.position
             let pending = await model.history.pending(account: account.id).first(where: { $0.item == item.Id })
-            resume = ResumePosition.local(item: item, pending: pending)
+            let latest = await model.history.latest(account: account.id, item: item.Id)
+            guard generation == currentGeneration, !stopped else { return }
+            resume = ResumePosition.local(item: item, pending: latest)
             if let localURL, let localSource {
                 online = false; api = nil; source = localSource; url = localURL
                 decision = PlaybackPolicy.decide(localSource, device: capabilities)
@@ -72,6 +78,7 @@ struct NativePlayer: UIViewControllerRepresentable {
                 online = true
                 let client = try model.client(for: account); api = client
                 let fresh = try await client.item(user: account.userID, id: item.Id)
+                guard generation == currentGeneration, !stopped else { return }
                 resume = fresh.position
                 if let pending {
                     let formatter = ISO8601DateFormatter(); formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -81,6 +88,7 @@ struct NativePlayer: UIViewControllerRepresentable {
                     }
                 }
                 let info = try await client.playbackInfo(user: account.userID, item: item.Id)
+                guard generation == currentGeneration, !stopped else { return }
                 guard info.ErrorCode == nil, let selected = info.MediaSources.first else { throw ClientError.unavailable }
                 source = selected; sessionID = info.PlaySessionId ?? UUID().uuidString
                 decision = PlaybackPolicy.decide(selected, device: capabilities)
@@ -102,6 +110,8 @@ struct NativePlayer: UIViewControllerRepresentable {
             }
             try Task.checkCancellation()
             guard generation == currentGeneration, !stopped else { return }
+            selectedDecision = decision
+            model.diagnostic = DiagnosticReport(source: source, decision: selectedDecision)
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
             try AVAudioSession.sharedInstance().setActive(true)
             if decision.route == .alternative {
@@ -120,7 +130,9 @@ struct NativePlayer: UIViewControllerRepresentable {
                     }
                 }
                 if online, let api {
-                    segments = (try? await api.segments(item: item.Id)) ?? []
+                    let fetchedSegments = (try? await api.segments(item: item.Id)) ?? []
+                    guard generation == currentGeneration, !stopped else { return }
+                    segments = fetchedSegments
                     await enqueueReport(client: api, event: eventFor(item: item, seconds: resume, paused: false), endpoint: "Playing").value
                 }
                 guard generation == currentGeneration, !stopped else { return }
@@ -140,7 +152,9 @@ struct NativePlayer: UIViewControllerRepresentable {
             try AVAudioSession.sharedInstance().setActive(true)
             self.player = player
             if online, let api {
-                segments = (try? await api.segments(item: item.Id)) ?? []
+                let fetchedSegments = (try? await api.segments(item: item.Id)) ?? []
+                guard generation == currentGeneration, !stopped else { return }
+                segments = fetchedSegments
                 if let preferences = try? await api.user(id: account.userID).Configuration {
                     await apply(preferences, asset: asset, item: playerItem)
                 }
@@ -192,6 +206,7 @@ struct NativePlayer: UIViewControllerRepresentable {
         let seconds = alternative?.seconds ?? player?.currentTime().seconds ?? 0
         let paused = alternative?.paused ?? (player?.rate == 0)
         guard seconds.isFinite else { return }
+        guard ledger.checkpoint(seconds, generation: generation) else { return }
         guard force || abs(seconds - lastReport) >= 15 else { return }
         reporting = true; defer { reporting = false }
         lastReport = seconds
@@ -203,10 +218,11 @@ struct NativePlayer: UIViewControllerRepresentable {
         await model.record(account: account, item: item, seconds: seconds, completed: completed)
         await task?.value
     }
-    func stop(cancelOpening: Bool = true) async {
+    @discardableResult func stop(cancelOpening: Bool = true) async -> UUID {
+        _ = ledger.stop(generation: generation)
         if cancelOpening { openOperation = UUID() }
-        generation = UUID()
-        guard !stopped else { return }
+        let stoppedGeneration = UUID(); generation = stoppedGeneration
+        guard !stopped else { return stoppedGeneration }
         stopped = true; countdownTask?.cancel()
         player?.pause()
         if let timeObserver { player?.removeTimeObserver(timeObserver); self.timeObserver = nil }
@@ -230,6 +246,7 @@ struct NativePlayer: UIViewControllerRepresentable {
             await task?.value
         }
         if let conversionClient { try? await conversionClient.stopConversion(session: conversionSession) }
+        return stoppedGeneration
     }
     private func eventFor(item: MediaItem, seconds: Double, paused: Bool) -> SessionEvent {
         var value = SessionEvent(item: item.Id, source: source?.Id, session: sessionID, seconds: seconds, paused: paused)
@@ -284,16 +301,17 @@ struct NativePlayer: UIViewControllerRepresentable {
         alternative?.bridge.pause()
         let key = issue == "auth" ? "error.auth" : (issue == "network" ? "error.network" : "player.unsupported")
         failure = NSLocalizedString(key, comment: "")
-        model?.diagnostic = DiagnosticReport(source: source, decision: source.map { PlaybackPolicy.decide($0, device: .init()) }, issue: issue)
+        model?.diagnostic = DiagnosticReport(source: source, decision: selectedDecision, issue: issue)
     }
     private func ended() async {
+        guard ledger.complete(generation: generation) else { return }
         guard !completed, !stopped, let item, let account, let api, let model else {
             if !online && !stopped { completed = true; await stop() }
             return
         }
         completed = true
-        await stop()
-        let completedGeneration = generation
+        let completedGeneration = await stop()
+        guard generation == completedGeneration else { return }
         guard let series = item.SeriesId else { return }
         do {
             var episodes: [MediaItem] = []; var offset = 0
@@ -343,7 +361,7 @@ struct PlaybackView: View {
             #if os(iOS)
             if session.player != nil { AirPlayPicker().frame(width: 44, height: 44).accessibilityLabel("player.airplay") }
             #endif
-        }.navigationTitle(item.Name)
+        }.navigationTitle(session.currentTitle.isEmpty ? item.Name : session.currentTitle)
         .alert("player.conversionTitle", isPresented: Binding(get: { session.consentRequest != nil }, set: { if !$0 { session.declineVideo() } })) {
             Button("cancel", role: .cancel) { session.declineVideo() }
             Button("player.acceptConversion") { session.approveVideo() }

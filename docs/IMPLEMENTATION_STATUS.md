@@ -1,4 +1,4 @@
-# Acceptance status — initial native implementation
+# Acceptance status — continued native implementation
 
 Evidence is scoped: implemented means code exists and is wired; compile-tested means Apple compiler accepted it; fixture-tested means the named automated behavior ran successfully. Hardware/live-server behavior is pending throughout. This is not the full v1 release.
 
@@ -7,7 +7,8 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 - Xcode 16.4 / Swift 6.1.2 on GitHub macOS 15. Final [run 38620804616](https://github.com/KasperMahi/MahiFin/actions/runs/38620804616) passed **17 core tests**, both unsigned simulator builds, **3 iOS and 2 tvOS onboarding UI tests** at executable commit `97faa54`. Final handoff commit only changes documentation; application/test/project code matches this tested commit.
 - Windows Python structural checks passed: deterministic project, target minimums, fixture parsing, localization key parity. No Swift/Xcode installed locally.
 - OS 18 simulator runtimes available. Onboarding EN/DA, empty-credential guards (both platforms), and insecure-server rejection (iOS) passed. Catalog/player/download UI and real server/account/media/hardware remain pending.
-- No runtime third-party packages; provenance in THIRD_PARTY_NOTICES.md. All test metadata is invented, no media binaries.
+- Continuation [run 38627898488](https://github.com/KasperMahi/MahiFin/actions/runs/38627898488) at `6b906ed`: **24 core tests, both unsigned builds and 4 iOS UI tests passed**, including real synthetic H.264/AAC MKV playback/seek/EOF via VLCKit. Overall run failed before tvOS UI tests (FrontBoard could not find runner). Latest R5 edits and track-count assertions still require rerun.
+- Pinned official VLCKit and iOS-only Google Cast SDK; notices/source-distribution gates in THIRD_PARTY_NOTICES.md. Media is generated from authored color/audio/subtitle fixtures in CI, with no private content.
 
 ## Acceptance matrix
 
@@ -23,19 +24,19 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 | UI-04 | EN/DA key parity and localized error/accessibility basics | Yes | Structural parity + native EN/DA onboarding UI tests pass | Full app VoiceOver/dynamic type/locales |
 | PLAY-01 | Native seek/resume; per-account durable queue and server progress | Yes | 720s fixture + durable queue | Device stop/restart/seek |
 | PLAY-02 | End notification, stop once, 5s cancellable next; no offline autoplay | Yes | Countdown pure function; lifecycle integration pending | End/Cancel/navigation race tests |
-| PLAY-03 | Conservative route policy; native execution; alternative/remux/audio/video execution BLOCKED | Yes | Policy matrix + original URLs | Integrate actual supported adapter/conversion contracts |
+| PLAY-03 | Native + pinned VLCKit original; remux/audio copy paths; per-source expiring consent before video encoding | Yes, 6b906ed | Copy request/consent scope tests; real iOS MKV seek/EOF | Live server ffmpeg copy/encoding/cleanup audit; tvOS runtime rerun |
 | PLAY-04 | Native H.264/AAC/AC3/EAC3 route | Yes | Metadata policy only | Synthetic playback/audio/seek |
 | PLAY-05 | Width-constrained original H.264 route; never resolution downgrade | Yes | 3840 policy test | 4K profile/bitrate/performance |
-| PLAY-06 | HDR route conservatively rejected (no verified display capability) | Yes | No HDR output test | BLOCKED hardware capability and HDR10 output gate |
-| PLAY-07 | Unsupported MKV/audio surfaces error; local alternative engine BLOCKED | Yes | MKV/TrueHD policy | License/pin actual engine, audio matrix |
-| PLAY-08 | Native track menus, basic None/OnlyForced/language preferences; external/image/Smart selection incomplete | Yes | Burn-in never starts conversion | Track preference/subtitle clips |
+| PLAY-06 | VideoToolbox HEVC and Apple HDR modes probe; Main10/HDR10/HLG only; no inferred DV or VLC HDR | Yes, 6b906ed | Main10/mode/unknown-DV policy test | Physical 4K HDR output/HDMI chain pending |
+| PLAY-07 | Real official VLCKit MKV original engine, pause/seek/audio/subtitle selection; bounded SDR policy | Yes, 6b906ed | iOS synthetic MKV H.264/AAC seek/EOF passed; track assertions pending | tvOS runtime; TrueHD/DTS/EAC3/HEVC/PGS/audio output matrix; LGPL distribution gate |
+| PLAY-08 | Native and VLC track menus; basic native None/OnlyForced/language preferences; external/image/Smart preferences incomplete | Yes, 6b906ed | Burn-in blocked from copy conversion; embedded SRT enumeration test pending | Track selection/rendering and preference clips |
 | PLAY-09 | Trusted server MediaSegments only, interval validation and skip seek | Yes | Trusted segment interval test | Server provider + UI seek |
 | PLAY-10 | Finite HTTP timeouts, player failure category, diagnostics | Yes | HTTP failure mapping | Network loss/retry/failure notification |
 | PLAY-11 | Native audio session; no passthrough claims | Yes | Not fixture-testable | Physical soundbar ARC/eARC gate |
-| CAST-01 | BLOCKED official SDK/receiver integration. Explicit unavailable settings; no false connected state | Protocol compiles | No discovery test | Verify ID/protocol/auth then integrate SDK |
-| CAST-02 | BLOCKED actual remote controls/reconnect/lock screen | Protocol compiles | No receiver test | Real legacy receiver + reporting |
+| CAST-01 | Official iOS Cast SDK; authenticated configured ID/Bonjour validation, explicit discovery, real SDK connection state | Yes, 6b906ed | Receiver-ID/privacy policy tests; no discovery hardware test | Local Network permission, stable/legacy receiver/reconnect |
+| CAST-02 | Actual SDK controls for existing media; resume/seek consent gate pending compile; Jellyfin load/reporting/lock screen blocked | Yes SDK; latest gate pending | No receiver test | Receiver session controls/errors, lock screen/history |
 | CAST-03 | Legacy capability consent policy; conversion execution unavailable | Yes | Legacy HEVC/4K -> consent-required policy | Real receiver acceptance/decline UI |
-| CAST-04 | BLOCKED secure receiver authentication contract; no token sent to receiver | Boundary compiles | No receiver test | Supported secure receiver protocol |
+| CAST-04 | BLOCKED: audited receiver logs full accessToken envelope and may automatically convert; sender never sends it | Yes, 6b906ed | Credential-envelope guard test; upstream source audit | Redact receiver logs and verify no implicit encoding before auth/load can be enabled |
 | AIR-01 | iOS AVRoutePickerView + native external playback/audio session | Yes | No route test | AirPlay physical playback/seek/background |
 | OFF-01 | Background authenticated original transfer, Wi-Fi default/cellular, manifest/free-space/progress | Yes | Original endpoint construction only | Device bytes/hash/background/cellular |
 | OFF-02 | Download view opens local AVURLAsset without Jellyfin lookup; local queue resume | Yes | Local manifest account/path validation; full playback pending | Airplane mode before navigation |

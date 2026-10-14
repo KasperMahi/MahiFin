@@ -14,4 +14,12 @@ for platform, prefix in (("iOS", "iPhone"), ("tvOS", "Apple TV")):
     print(f"UI smoke: {platform} {runtime} {device['name']}", flush=True)
     Path("TestResults").mkdir(exist_ok=True)
     architecture = "arm64" if host_platform.machine() == "arm64" else "x86_64"
-    subprocess.run(["xcodebuild", "-project", "MahiFin.xcodeproj", "-scheme", f"MahiFin-{platform}", "-destination", f"platform={'iOS' if platform == 'iOS' else 'tvOS'} Simulator,id={device['udid']}", "-derivedDataPath", f"DerivedData/Smoke/{platform}", "-resultBundlePath", f"TestResults/{platform}.xcresult", "CODE_SIGNING_ALLOWED=NO", f"ARCHS={architecture}", "test"], check=True)
+    # Wait for SpringBoard/FrontBoard before XCTest installs its runner. Serialize destinations
+    # rather than letting Xcode create unbooted test clones alongside the other platform.
+    if device["state"] != "Booted":
+        subprocess.run(["xcrun", "simctl", "boot", device["udid"]], check=True)
+    subprocess.run(["xcrun", "simctl", "bootstatus", device["udid"], "-b"], check=True)
+    try:
+        subprocess.run(["xcodebuild", "-project", "MahiFin.xcodeproj", "-scheme", f"MahiFin-{platform}", "-destination", f"platform={platform} Simulator,id={device['udid']}", "-parallel-testing-enabled", "NO", "-derivedDataPath", f"DerivedData/Smoke/{platform}", "-resultBundlePath", f"TestResults/{platform}.xcresult", "CODE_SIGNING_ALLOWED=NO", f"ARCHS={architecture}", "test"], check=True)
+    finally:
+        subprocess.run(["xcrun", "simctl", "shutdown", device["udid"]], check=False)

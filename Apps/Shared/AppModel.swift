@@ -56,6 +56,7 @@ import MahiFinCore
         if active?.id != account.id { cast.disconnect() }
         #endif
         active = account
+        diagnostic = .init(source: nil, decision: nil)
         Task { await sync() }
     }
     func forget(_ account: Account) async {

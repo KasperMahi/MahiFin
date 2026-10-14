@@ -33,7 +33,7 @@ import MahiFinCastSDK
         throw ClientError.unavailable
     }
     func pause() async throws { guard state == "receiver", hasMedia else { throw ClientError.unavailable }; bridge.pause() }
-    func seek(seconds: Double) async throws { guard state == "receiver", hasMedia else { throw ClientError.unavailable }; bridge.seek(seconds: seconds) }
+    func seek(seconds: Double) async throws { throw ClientError.unavailable /* Requires source-unknown receiver conversion confirmation in CastView. */ }
     func disconnect() { bridge.disconnect(); state = "disconnected"; hasMedia = false; configured = false }
 }
 private struct CastButton: UIViewRepresentable {
@@ -44,6 +44,8 @@ private struct CastButton: UIViewRepresentable {
 struct CastView: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var cast: CastModel
+    @State private var pendingScope: String?
+    @State private var pendingSeek: Double?
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("cast.privacyBlock")
@@ -59,12 +61,22 @@ struct CastView: View {
             if cast.state == "receiver" && cast.hasMedia {
                 Text("cast.existingMedia")
                 HStack {
-                    Button(cast.paused ? "player.play" : "player.pause") { cast.paused ? cast.bridge.play() : cast.bridge.pause() }
-                    Button("cast.seekBack") { cast.bridge.seek(seconds: max(0, cast.seconds - 10)) }
-                    Button("cast.seekForward") { cast.bridge.seek(seconds: cast.seconds + 10) }
+                    Button(cast.paused ? "player.play" : "player.pause") {
+                        if cast.paused { pendingSeek = nil; pendingScope = cast.bridge.mediaIdentity }
+                        else { cast.bridge.pause() }
+                    }
+                    Button("cast.seekBack") { pendingSeek = max(0, cast.seconds - 10); pendingScope = cast.bridge.mediaIdentity }
+                    Button("cast.seekForward") { pendingSeek = cast.seconds + 10; pendingScope = cast.bridge.mediaIdentity }
                 }
             }
             if cast.state == "receiver" { Button("cast.disconnect") { cast.disconnect() } }
-        }
+        }.alert("cast.controlConsentTitle", isPresented: Binding(get: { pendingScope != nil }, set: { if !$0 { pendingScope = nil } })) {
+            Button("cancel", role: .cancel) { pendingScope = nil }
+            Button("cast.controlConsentAccept") {
+                guard let scope = pendingScope, !scope.isEmpty, scope == cast.bridge.mediaIdentity else { pendingScope = nil; return }
+                if let pendingSeek { cast.bridge.seek(seconds: pendingSeek) } else { cast.bridge.play() }
+                pendingScope = nil
+            }
+        } message: { Text("cast.controlConsentBody") }
     }
 }

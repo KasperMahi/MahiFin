@@ -42,7 +42,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard !records.contains(where: { $0.account == account.id && $0.item.Id == item.Id }) else { return }
         guard source.IsRemote != true, source.RequiresOpening != true else { throw ClientError.unavailable }
         let available = try root.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage ?? 0
-        guard let size = source.Size, size > 0, available > size + 50_000_000 else { throw ClientError.storage }
+        guard let size = source.Size, size > 0, size < Int64.max - 50_000_000, available > size + 50_000_000 else { throw ClientError.storage }
         let record = DownloadRecord(account: account.id, item: item, source: source)
         records.append(record)
         try disk.save(records, name: "manifest.json")
@@ -50,6 +50,7 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
     }
     func start(id: UUID, request: URLRequest, cellular: Bool) throws {
         guard let index = records.firstIndex(where: { $0.id == id }), records[index].state != .complete else { return }
+        tasks[id]?.cancel()
         var request = request; request.allowsCellularAccess = cellular
         let task: URLSessionDownloadTask
         let resumeKey = "download-resume:" + id.uuidString
@@ -108,7 +109,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard records[index].taskID == downloadTask.taskIdentifier else { return }
         var movedFile: URL?
         do {
-            guard let response = downloadTask.response as? HTTPURLResponse, response.statusCode == 200 else { throw ClientError.invalidResponse }
+            guard let response = downloadTask.response as? HTTPURLResponse, [200, 206].contains(response.statusCode) else { throw ClientError.invalidResponse }
+            let mime = response.mimeType?.lowercased() ?? ""
+            guard mime.hasPrefix("video/") || mime == "application/octet-stream" else { throw ClientError.invalidResponse }
             let containers: Set<String> = ["mp4", "mov", "m4v", "mkv", "webm", "avi", "ts"]
             guard let ext = records[index].source.Container?.lowercased(), containers.contains(ext) else { throw ClientError.unavailable }
             let filename = id.uuidString + "." + ext
@@ -120,7 +123,9 @@ final class DownloadManager: NSObject, ObservableObject, URLSessionDownloadDeleg
             var protected = destination; var values = URLResourceValues(); values.isExcludedFromBackup = true
             try protected.setResourceValues(values)
             let size = (try destination.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0
-            guard DownloadIntegrity.isComplete(bytes: size, originalSize: records[index].source.Size, responseSize: downloadTask.countOfBytesExpectedToReceive) else { throw ClientError.invalidResponse }
+            guard DownloadIntegrity.isComplete(bytes: size, originalSize: records[index].source.Size,
+                responseSize: response.expectedContentLength, status: response.statusCode,
+                contentRange: response.value(forHTTPHeaderField: "Content-Range")) else { throw ClientError.invalidResponse }
             records[index].filename = filename; records[index].state = .complete; records[index].received = size
         } catch {
             if let movedFile { try? FileManager.default.removeItem(at: movedFile) }

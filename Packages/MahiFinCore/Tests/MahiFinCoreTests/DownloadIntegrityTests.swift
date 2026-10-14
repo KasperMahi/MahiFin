@@ -15,4 +15,11 @@ final class DownloadIntegrityTests: XCTestCase {
         event.completed = false; event.ticks = 7200000000
         XCTAssertEqual(ResumePosition.local(item: .init(id: "i", name: "Invented"), pending: event), 720)
     }
+    func testResumed206RequiresFullAssembledFileAndValidOriginalRange() {
+        XCTAssertTrue(DownloadIntegrity.isComplete(bytes: 1000, originalSize: 1000, responseSize: 500, status: 206, contentRange: "bytes 500-999/1000"))
+        XCTAssertFalse(DownloadIntegrity.isComplete(bytes: 500, originalSize: 1000, responseSize: 500, status: 206, contentRange: "bytes 500-999/1000"))
+        XCTAssertFalse(DownloadIntegrity.isComplete(bytes: 1000, originalSize: 1000, responseSize: 500, status: 206, contentRange: "bytes 500-999/2000"))
+        XCTAssertFalse(DownloadIntegrity.isComplete(bytes: 1000, originalSize: 1000, responseSize: 500, status: 206, contentRange: nil))
+        XCTAssertFalse(DownloadIntegrity.isComplete(bytes: 1000, originalSize: 1000, responseSize: 1000, status: 401))
+    }
 }

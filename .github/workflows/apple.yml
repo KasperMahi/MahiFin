@@ -40,3 +40,11 @@ jobs:
         run: xcrun simctl list devices available
       - name: Native onboarding UI smoke
         run: python3 scripts/simulator_smoke.py
+      - name: Simulator test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-test-results
+          path: TestResults
+          if-no-files-found: ignore
+          retention-days: 7

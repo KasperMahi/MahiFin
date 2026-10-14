@@ -67,6 +67,9 @@
 "cast.seekBack" = "Spol 10 sekunder tilbage";
 "cast.seekForward" = "Spol 10 sekunder frem";
 "cast.disconnect" = "Frakobl modtager";
+"cast.controlConsentTitle" = "Tillad mulig videokonvertering fra modtageren?";
+"cast.controlConsentAccept" = "Tillad konvertering til denne handling";
+"cast.controlConsentBody" = "Mediet er indlæst uden for MahiFin, så konverteringspolitikken er ukendt. Fortsæt/spol kan genstarte serverkonvertering og bruge CPU. Godkendelsen gælder kun denne handling i den aktuelle modtagersession. Annuller sender ingen kommando.";
 "settings.engine" = "Afspilningsmotor";
 "engine.automatic" = "Automatisk";
 "engine.native" = "Indbygget / serverkopiering ved behov";

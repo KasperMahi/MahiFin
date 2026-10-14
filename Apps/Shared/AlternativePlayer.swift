@@ -47,8 +47,11 @@ struct AlternativePlayerView: View {
             Text("\(Int(player.seconds)) / \(Int(player.duration)) s").font(.caption.monospacedDigit())
             HStack {
                 Button { player.seek(player.seconds - 10) } label: { Image(systemName: "gobackward.10") }
+                    .disabled(!player.bridge.seekable).accessibilityLabel("cast.seekBack")
                 Button { player.paused ? player.bridge.play() : player.bridge.pause() } label: { Image(systemName: player.paused ? "play.fill" : "pause.fill") }
+                    .accessibilityLabel(player.paused ? "player.play" : "player.pause")
                 Button { player.seek(player.seconds + 10) } label: { Image(systemName: "goforward.10") }
+                    .disabled(!player.bridge.seekable).accessibilityLabel("cast.seekForward")
             }
             if !player.audio.isEmpty {
                 Picker("player.audio", selection: Binding(get: { player.audio.first(where: \.selected)?.id ?? -1 }, set: { player.bridge.selectAudio(index: $0) })) {

@@ -29,6 +29,8 @@ final class OnboardingTests: XCTestCase {
         let playing = NSPredicate(format: "label == %@", "playing")
         expectation(for: playing, evaluatedWith: status)
         waitForExpectations(timeout: 20)
+        expectation(for: NSPredicate(format: "label == %@", "1 audio / 1 subtitles"), evaluatedWith: app.staticTexts["fixture.tracks"])
+        waitForExpectations(timeout: 5)
         #if os(iOS)
         app.buttons["fixture.seek"].tap()
         #endif

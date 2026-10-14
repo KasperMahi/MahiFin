@@ -8,7 +8,8 @@ enum NativeCapabilities {
         value.alternativeAvailable = preference != .native
         // Hardware decoding availability is not a guarantee about every profile, bitrate, display or audio chain.
         if !VTIsHardwareDecodeSupported(kCMVideoCodecType_HEVC) { value.videoCodecs.remove("hevc") }
-        if !VTIsHardwareDecodeSupported(kCMVideoCodecType_H264) { value.videoCodecs.remove("h264") }
+        // H.264 also has AVFoundation software decoding; absence of a hardware decoder
+        // alone must not force a low-resolution SDR original into server conversion.
         let modes = AVPlayer.availableHDRModes
         if modes.contains(.hdr10) { value.hdrFormats.insert("HDR10") }
         if modes.contains(.hlg) { value.hdrFormats.insert("HLG") }
