@@ -19,3 +19,5 @@ Secrets.xcconfig
 Config/Secrets*
 TestMedia/private/
 /.vs
+/TestResults/
+__pycache__/

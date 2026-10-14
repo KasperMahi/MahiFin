@@ -70,13 +70,31 @@ for platform, sdk, family, minimum in (("iOS", "iphoneos", "1,2", "IPHONEOS_DEPL
     configs_ref = obj(name + "configs", "XCConfigurationList", f'buildConfigurations = {array(configs)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
     target = obj(name + "target", "PBXNativeTarget", f'buildConfigurationList = {configs_ref}; buildPhases = ({sources}, {frameworks}, {resources}); buildRules = (); dependencies = (); name = {quote(name)}; packageProductDependencies = ({product_dep}); productName = {quote(name)}; productReference = {product}; productType = "com.apple.product-type.application";')
     targets.append(target)
+    test_name = name + "-UITests"
+    test_file = obj("uitest-file", "PBXFileReference", 'lastKnownFileType = sourcecode.swift; path = Tests/UITests/OnboardingTests.swift; sourceTree = SOURCE_ROOT;')
+    all_refs.append(test_file)
+    test_build = obj(test_name + "source", "PBXBuildFile", f'fileRef = {test_file};')
+    test_sources = obj(test_name + "sources", "PBXSourcesBuildPhase", f'buildActionMask = 2147483647; files = ({test_build}); runOnlyForDeploymentPostprocessing = 0;')
+    test_frameworks = obj(test_name + "frameworks", "PBXFrameworksBuildPhase", 'buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;')
+    test_resources = obj(test_name + "resources", "PBXResourcesBuildPhase", 'buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;')
+    test_product = obj(test_name + "product", "PBXFileReference", f'explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = {test_name}.xctest; sourceTree = BUILT_PRODUCTS_DIR;')
+    products.append(test_product)
+    test_configs = []
+    for config in ("Debug", "Release"):
+        test_values = {"PRODUCT_NAME": test_name, "PRODUCT_BUNDLE_IDENTIFIER": "dk.mahifin." + platform.lower() + ".uitests", "SDKROOT": sdk, "TARGETED_DEVICE_FAMILY": family, minimum: "18.0", "SWIFT_VERSION": "5.0", "GENERATE_INFOPLIST_FILE": "YES", "TEST_TARGET_NAME": name, "CODE_SIGN_STYLE": "Automatic"}
+        test_configs.append(obj(test_name + config, "XCBuildConfiguration", f'buildSettings = {settings(test_values)}; name = {config};'))
+    test_config_list = obj(test_name + "configs", "XCConfigurationList", f'buildConfigurations = {array(test_configs)}; defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;')
+    proxy = obj(test_name + "proxy", "PBXContainerItemProxy", f'containerPortal = {uid("project")}; proxyType = 1; remoteGlobalIDString = {target}; remoteInfo = {quote(name)};')
+    dependency = obj(test_name + "dependency", "PBXTargetDependency", f'target = {target}; targetProxy = {proxy};')
+    test_target = obj(test_name + "target", "PBXNativeTarget", f'buildConfigurationList = {test_config_list}; buildPhases = ({test_sources}, {test_frameworks}, {test_resources}); buildRules = (); dependencies = ({dependency}); name = {quote(test_name)}; productName = {quote(test_name)}; productReference = {test_product}; productType = "com.apple.product-type.bundle.ui-testing";')
+    targets.append(test_target)
     scheme_dir = PROJECT / "xcshareddata" / "xcschemes"
     scheme_dir.mkdir(parents=True, exist_ok=True)
     reference_xml = f'<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="{name}.app" BlueprintName="{name}" ReferencedContainer="container:MahiFin.xcodeproj"/>'
     scheme = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion="1640" version="1.7">
  <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">{reference_xml}</BuildActionEntry></BuildActionEntries></BuildAction>
- <TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"><Testables/></TestAction>
+ <TestAction buildConfiguration="Debug" shouldUseLaunchSchemeArgsEnv="YES"><Testables><TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{test_target}" BuildableName="{test_name}.xctest" BlueprintName="{test_name}" ReferencedContainer="container:MahiFin.xcodeproj"/></TestableReference></Testables></TestAction>
  <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" allowLocationSimulation="YES"><BuildableProductRunnable runnableDebuggingMode="0">{reference_xml}</BuildableProductRunnable></LaunchAction>
  <ProfileAction buildConfiguration="Release" shouldUseLaunchSchemeArgsEnv="YES" savedToolIdentifier="" useCustomWorkingDirectory="NO" debugDocumentVersioning="YES"><BuildableProductRunnable runnableDebuggingMode="0">{reference_xml}</BuildableProductRunnable></ProfileAction>
  <AnalyzeAction buildConfiguration="Debug"/><ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/>

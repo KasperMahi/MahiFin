@@ -51,21 +51,24 @@ struct OnboardingView: View {
                 Section { Text("onboarding.help") }
                 Section("onboarding.server") {
                     TextField("onboarding.url", text: $server)
+                        .accessibilityIdentifier("server.url")
                         #if os(iOS)
                         .textInputAutocapitalization(.never).keyboardType(.URL).autocorrectionDisabled()
                         #endif
                 }
                 Section("onboarding.password") {
                     TextField("onboarding.username", text: $username)
+                        .accessibilityIdentifier("auth.username")
                         #if os(iOS)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         #endif
                     SecureField("onboarding.password", text: $password)
-                    Button("onboarding.signin") { run(quick: false) }.disabled(busy || username.isEmpty || server.isEmpty)
+                        .accessibilityIdentifier("auth.password")
+                    Button("onboarding.signin") { run(quick: false) }.disabled(busy || username.isEmpty || server.isEmpty).accessibilityIdentifier("auth.signin")
                 }
                 Section("onboarding.quick") {
                     if let code { Text(code).font(.largeTitle.monospaced()); Text("onboarding.authorize") }
-                    Button("onboarding.quick") { run(quick: true) }.disabled(busy || server.isEmpty)
+                    Button("onboarding.quick") { run(quick: true) }.disabled(busy || server.isEmpty).accessibilityIdentifier("auth.quick")
                     if busy {
                         ProgressView()
                         Button("cancel") { operation?.cancel(); busy = false; code = nil }
