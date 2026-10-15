@@ -30,10 +30,16 @@ class AuditTests(unittest.TestCase):
 
     def test_video_requires_actual_bounded_encoder_bitrate(self):
         argv = ["-codec:v:0", "libx264", "-codec:a:0", "aac"]
-        for rate in (None, "9000000", "0"):
+        for extra in ([], ["-b:v", "8000000"],
+                      ["-maxrate", "9000000", "-bufsize", "16000000"],
+                      ["-maxrate", "0", "-bufsize", "16000000"],
+                      ["-maxrate", "8000000"],
+                      ["-maxrate", "8000000", "-bufsize", "0"],
+                      ["-maxrate", "8000000", "-bufsize", "16000001"],
+                      ["-b:v", "9000000", "-maxrate", "8000000", "-bufsize", "16000000"]):
             with self.assertRaises(AuditFailure):
-                audit(argv + (["-b:v", rate] if rate else []), "video", self.streams(1920, 1080))
-        result = audit(argv + ["-b:v", "8000000"], "video", self.streams(1920, 1080))
+                audit(argv + extra, "video", self.streams(1920, 1080))
+        result = audit(argv + ["-crf", "23", "-maxrate", "8000000", "-bufsize", "16000000"], "video", self.streams(1920, 1080))
         self.assertFalse(result["video_copy"])
 
     def test_copy_rejects_filter_scripts_and_indexed_pixel_changes(self):

@@ -48,8 +48,14 @@ def audit(argv, mode, streams):
         if not width or not height or width > 1920 or height > 1080:
             raise AuditFailure("approved video exceeded disclosed resolution")
         rates = [argv[i + 1] for i, flag in enumerate(argv[:-1]) if flag in {"-b:v", "-b:v:0"}]
-        if not rates or any(not value.isdecimal() or not 0 < int(value) <= 8_000_000 for value in rates):
+        maxima = [argv[i + 1] for i, flag in enumerate(argv[:-1]) if flag in {"-maxrate", "-maxrate:v", "-maxrate:v:0"}]
+        buffers = [argv[i + 1] for i, flag in enumerate(argv[:-1]) if flag in {"-bufsize", "-bufsize:v", "-bufsize:v:0"}]
+        # Jellyfin's libx264 CRF path uses a finite VBV cap, not -b:v.
+        # Require that real cap; an average target alone does not bound quality.
+        if not maxima or not buffers or any(not value.isdecimal() or not 0 < int(value) <= 8_000_000 for value in rates + maxima):
             raise AuditFailure("approved video exceeded or omitted disclosed bitrate")
+        if any(not value.isdecimal() or not 0 < int(value) <= 16_000_000 for value in buffers):
+            raise AuditFailure("approved video omitted or exceeded bounded VBV buffer")
     else:
         raise AuditFailure("unknown mode")
     return {"mode": mode, "video_encoders": video, "audio_encoders": audio,
