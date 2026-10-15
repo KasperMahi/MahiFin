@@ -110,3 +110,14 @@ The corresponding native setup window is protected too: retain the requested off
 Final handoff updates documentation only; executable/project/workflow/test files match 9820b77. Draft PR #1 remains open/unmerged. Resume from the unchecked required release gates and status matrix; do not reimplement completed adapters or repeat the initial audit.
 
 Remaining: secure deployed receiver auth/conversion contract (external Cast blocker); live Jellyfin 10.10/10.11/12 copy/audio/video/cleanup validation; broader media/subtitle preferences/external tracks and catalog/download/auto-next UI tests; physical iPhone/Apple TV/AirPlay/background/airplane-mode/history/HDR/audio/legacy Cast matrix; exact LGPL corresponding-source/relinking and Google distribution terms. No real server, credentials, physical output or background-transfer behavior was tested here.
+
+## Real-server integration continuation — prioritized checkpoint
+
+- [ ] I1: Disposable Linux/Docker Jellyfin CI, exact deployable versions, synthetic-only media, isolated network, ephemeral credentials/TLS, allowlisted reports.
+- [ ] I2: Exercise the actual Swift core against real authentication/catalog/playback/history/download endpoints; profile isolation, offline replay, next-up and interrupted download checks.
+- [ ] I3: Execute remux/audio-only/explicit test-consented video HLS, inspect actual ffmpeg arguments/processes and output dimensions/codecs; assert cleanup and no unapproved video processing; fix discovered contract bugs.
+- [ ] I4: Verify consent quality disclosure (including 4K to at most 1080p / 8 Mb/s), retain simulator/UI gates and both OS 18 unsigned builds.
+- [ ] I5: Bounded Cast source/security investigation and actionable safe receiver strategy; retain credential/load blocker when receiver changes/deployment are required.
+- [ ] I6: Document gated future signing/App Store Connect/TestFlight workflow and exact VLCKit/Google distribution checklist; no credentials, enrollment, upload or publishing now.
+
+Start: existing branch clean, previous verified code 9820b77 / docs b8a9df1 retained. Windows has Docker CLI but its Linux daemon is not running; real integration will run on Linux CI rather than changing the user's Docker Desktop state. No local Swift executable. New integration work has no real-server evidence yet.

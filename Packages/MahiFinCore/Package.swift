@@ -7,6 +7,7 @@ let package = Package(
     products: [.library(name: "MahiFinCore", targets: ["MahiFinCore"])],
     targets: [
         .target(name: "MahiFinCore"),
+        .executableTarget(name: "MahiFinIntegrationProbe", dependencies: ["MahiFinCore"]),
         .testTarget(name: "MahiFinCoreTests", dependencies: ["MahiFinCore"], resources: [.copy("Fixtures")])
     ]
 )

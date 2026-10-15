@@ -1,5 +1,11 @@
 # Implementation decisions — 14 October 2026
 
+## Real disposable integration continuation
+
+Linux CI uses exact official Jellyfin 10.10.7/10.11.0 image tags initially, recording resolved image digests for a subsequent immutable lock. Swift 6.1.2-jammy runs the production core client through a private, trusted loopback HTTPS proxy; no ATS/TLS bypass is added. Jellyfin's container network has no Internet egress, libraries disable Internet providers, and only generated color/silence/SRT/NFO media is mounted. Startup users/passwords, tokens, certificates, raw ffmpeg logs and server databases are ephemeral private runner data, excluded from artifacts. Reports allowlist checks, resolved versions/digests, ffmpeg codecs and probed dimensions only.
+
+The test executable is not linked into either Apple app. Its explicit automated video grant is test-only and separate from the already-tested human consent dialog. Copy/audio tests inspect actual ffmpeg argv AND first output segment codecs/dimensions; video tests check the disclosed 1920x1080 ceiling and DELETE cancellation while encoding is active. A throttled loopback transfer and a dropped response after a committed history write inject network faults around a real server, rather than replacing its responses. These are real-server/foreground transport checks, not iOS background/hardware playback evidence. Implementation pending first CI execution.
+
 ## Audit
 
 - Clean specification-only repository; no inherited application code or dependencies.

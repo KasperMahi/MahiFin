@@ -1,0 +1,37 @@
+name: Disposable Jellyfin integration
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jellyfin-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  real-server:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        jellyfin: ['10.10.7', '10.11.0']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install output inspector
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - name: Validate audit invariants
+        run: python3 -m unittest discover -s scripts/integration -p 'test_*.py'
+      - name: Real server and production Swift client
+        run: python3 scripts/integration/run.py --version '${{ matrix.jellyfin }}'
+      - name: Allowlisted integration evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-jellyfin-${{ matrix.jellyfin }}
+          path: TestResults/IntegrationReports/*.json
+          if-no-files-found: error
+          retention-days: 14

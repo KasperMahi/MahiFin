@@ -1,0 +1,52 @@
+"""Inspect real ffmpeg argv/output, without exporting raw server log lines."""
+import shlex
+
+
+class AuditFailure(Exception):
+    pass
+
+
+def command_from_log(text):
+    for line in text.splitlines():
+        if "/ffmpeg " in line and not line.lstrip().startswith("{"):
+            return shlex.split(line[line.index("/usr/"):])
+    raise AuditFailure("ffmpeg command not found")
+
+
+def codecs(argv, kind):
+    flags = {f"-c:{kind}", f"-codec:{kind}", f"-c:{kind}:0", f"-codec:{kind}:0"}
+    return [argv[i + 1] for i, value in enumerate(argv[:-1]) if value in flags]
+
+
+def audit(argv, mode, streams):
+    video = codecs(argv, "v")
+    audio = codecs(argv, "a")
+    if not video or not audio:
+        raise AuditFailure("missing explicit stream codecs")
+    actual_video = next((s for s in streams if s.get("codec_type") == "video"), {})
+    actual_audio = next((s for s in streams if s.get("codec_type") == "audio"), {})
+    if any(s.get("codec_type") == "subtitle" for s in streams):
+        raise AuditFailure("unexpected output subtitle stream")
+    width, height = actual_video.get("width"), actual_video.get("height")
+    if mode in ("remux", "audioOnly"):
+        if set(video) != {"copy"}:
+            raise AuditFailure("copy path video encoder")
+        forbidden = {"-vf", "-filter:v", "-filter:v:0", "-filter_complex", "-s", "-s:v", "-s:v:0", "-pix_fmt"}
+        if forbidden.intersection(argv):
+            raise AuditFailure("copy path pixel processing")
+        if (width, height) != (3840, 2160):
+            raise AuditFailure("copy path changed original 4K dimensions")
+        if mode == "remux" and set(audio) != {"copy"}:
+            raise AuditFailure("remux changed audio")
+        if mode == "audioOnly" and ("copy" in audio or actual_audio.get("codec_name") != "aac"):
+            raise AuditFailure("audio-only did not encode AAC")
+    elif mode == "video":
+        if "copy" in video or actual_video.get("codec_name") != "h264":
+            raise AuditFailure("approved video did not encode H264")
+        if not width or not height or width > 1920 or height > 1080:
+            raise AuditFailure("approved video exceeded disclosed resolution")
+    else:
+        raise AuditFailure("unknown mode")
+    return {"mode": mode, "video_encoders": video, "audio_encoders": audio,
+            "output_video": actual_video.get("codec_name"), "output_audio": actual_audio.get("codec_name"),
+            "width": width, "height": height, "video_copy": set(video) == {"copy"}}
