@@ -92,6 +92,8 @@ def proxy(upstream, certificate, key):
     address = urllib.parse.urlsplit(upstream)
 
     class Handler(http.server.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, *_):
             pass  # URLs can carry api_key. Never use the default access logger.
 
@@ -103,15 +105,26 @@ def proxy(upstream, certificate, key):
                 headers = {k: v for k, v in self.headers.items() if k.lower() not in {"host", "connection", "x-mahifin-test-slow"}}
                 connection.request(self.command, self.path, body=body or None, headers=headers)
                 response = connection.getresponse()
+                has_body = self.command != "HEAD" and response.status not in (204, 304) and response.status >= 200
+                chunked = has_body and (response.chunked or response.getheader("Content-Length") is None)
                 self.send_response(response.status)
                 for name, value in response.getheaders():
                     if name.lower() not in {"connection", "transfer-encoding", "server", "date"}:
-                        self.send_header(name, value)
+                        if not (chunked and name.lower() == "content-length"):
+                            self.send_header(name, value)
+                if chunked:
+                    self.send_header("Transfer-Encoding", "chunked")
                 self.end_headers()
                 while chunk := response.read(16384):
-                    self.wfile.write(chunk); self.wfile.flush()
+                    if chunked:
+                        self.wfile.write(f"{len(chunk):X}\r\n".encode() + chunk + b"\r\n")
+                    else:
+                        self.wfile.write(chunk)
+                    self.wfile.flush()
                     if slow:
                         time.sleep(0.02)  # Network fault harness, not a fake Jellyfin response.
+                if chunked:
+                    self.wfile.write(b"0\r\n\r\n"); self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError, TimeoutError):
                 pass
             finally:
