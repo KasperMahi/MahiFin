@@ -1,6 +1,6 @@
 # Device and integration repro procedures
 
-All server URLs/accounts remain local. Use a disposable test user and synthetic media. Never attach raw request/AVPlayer logs with URLs to a public issue. No live integration tests have been performed in this run. Start with [REAL_SERVER_TESTS.md](REAL_SERVER_TESTS.md) for the isolated Linux/Docker suite and its current CI startup blocker. Use [CAST_SECURITY_STRATEGY.md](CAST_SECURITY_STRATEGY.md) before any receiver authorization and [DISTRIBUTION.md](DISTRIBUTION.md) for future signing/TestFlight preparation.
+All server URLs/accounts remain local. Use a disposable test user and synthetic media. Never attach raw request/AVPlayer logs with URLs to a public issue. The isolated real-server suite passed Jellyfin 10.10.7/10.11.0 at 70899c6; no physical-device tests were performed. Start with [REAL_SERVER_TESTS.md](REAL_SERVER_TESTS.md) for commands and evidence limits. Use [CAST_SECURITY_STRATEGY.md](CAST_SECURITY_STRATEGY.md) before any receiver authorization and [DISTRIBUTION.md](DISTRIBUTION.md) for future signing/TestFlight preparation.
 
 ## Setup and account isolation
 
