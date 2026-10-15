@@ -6,8 +6,11 @@ import MahiFinCore
 
 // Test executable only: never linked into either app. Credentials/output live in
 // the disposable runner's private directory, never stdout or CI artifacts.
-struct ProbeFailure: Error {}
-func require(_ value: Bool) throws { if !value { throw ProbeFailure() } }
+struct ProbeFailure: Error {
+    let line: UInt
+    init(line: UInt = #line) { self.line = line }
+}
+func require(_ value: Bool, line: UInt = #line) throws { if !value { throw ProbeFailure(line: line) } }
 struct ProbeOutput: Codable {
     var token: String
     var urls: [String: String] = [:]
@@ -164,8 +167,8 @@ actor LostWriteResponse: HTTPTransport {
                 }
             } else if error is DecodingError {
                 print("INTEGRATION: response decoding failed")
-            } else if error is ProbeFailure {
-                print("INTEGRATION: contract assertion failed")
+            } else if let error = error as? ProbeFailure {
+                print("INTEGRATION: contract assertion failed at source line \(error.line)")
             }
             exit(1)
         }

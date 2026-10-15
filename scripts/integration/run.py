@@ -18,7 +18,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from ffmpeg_audit import audit, command_from_log
+from ffmpeg_audit import AuditFailure, audit, command_from_log
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSIONS = {"10.10.7": "jellyfin/jellyfin:10.10.7", "10.11.0": "jellyfin/jellyfin:10.11.0"}
@@ -313,7 +313,7 @@ def run(version, report):
             report["failed_phase"] = phase
             # Never include arbitrary exception text/server bodies/URLs in the artifact.
             report["failure_type"] = type(error).__name__
-            if isinstance(error, Failure):
+            if isinstance(error, (Failure, AuditFailure)):
                 print("INTEGRATION FAILED:", phase, str(error), flush=True)
             elif isinstance(error, KeyError) and error.args[0] in {"Version", "AccessToken", "User", "Id", "Items", "checks", "token", "urls"}:
                 print("INTEGRATION FAILED:", phase, "missing expected field", error.args[0], flush=True)
