@@ -37,15 +37,18 @@ actor LostWriteResponse: HTTPTransport {
             let path = root.appendingPathComponent("probe-private.json")
             func save(_ output: ProbeOutput) throws { try JSONEncoder().encode(output).write(to: path, options: .atomic) }
             let anonymous = try JellyfinClient(server: server, deviceID: "integration-owner")
-            phase = "authentication"
+            phase = "public-system-info"
             let info = try await anonymous.systemInfo()
+            phase = "owner-authentication"
             let auth = try await anonymous.authenticate(username: "fixture-owner", password: password)
             let account = Account(server: server, serverID: info.Id, userID: auth.User.Id, name: "Invented")
             let client = try JellyfinClient(server: server, token: auth.AccessToken, deviceID: "integration-owner")
             var output = ProbeOutput(token: auth.AccessToken)
             try save(output)
+            phase = "wrong-password-rejection"
             do { _ = try await anonymous.authenticate(username: "fixture-owner", password: UUID().uuidString); throw ProbeFailure() }
             catch ClientError.unauthorized {} // Real rejected password, not a fixture response.
+            phase = "other-user-authentication"
             let otherAnonymous = try JellyfinClient(server: server, deviceID: "integration-other")
             let otherAuth = try await otherAnonymous.authenticate(username: "fixture-other", password: otherPassword)
             let other = try JellyfinClient(server: server, token: otherAuth.AccessToken, deviceID: "integration-other")
@@ -146,6 +149,16 @@ actor LostWriteResponse: HTTPTransport {
         } catch {
             // Do not stringify Error/URLRequest: these can include token-bearing URLs.
             print("INTEGRATION: Swift probe FAILED at \(phase)")
+            if let error = error as? ClientError {
+                // This enum contains only fixed cases or an integer status.
+                print("INTEGRATION: client category \(String(describing: error))")
+            } else if let error = error as? URLError {
+                print("INTEGRATION: transport code \(error.code.rawValue)")
+            } else if error is DecodingError {
+                print("INTEGRATION: response decoding failed")
+            } else if error is ProbeFailure {
+                print("INTEGRATION: contract assertion failed")
+            }
             exit(1)
         }
     }

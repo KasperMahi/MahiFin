@@ -224,7 +224,11 @@ def run(version, report):
             check(parsed.is_private and not (parsed.is_loopback or parsed.is_unspecified or parsed.is_multicast), "expected private Docker bridge address")
             bootstrap = API(f"http://{address}:8096")
             phase = "server-startup"
-            actual = wait_until(lambda: bootstrap.json("System/Info/Public"))
+            def ready_info():
+                value = bootstrap.json("System/Info/Public")
+                # A nonempty startup/status object is not yet public system info.
+                return value if isinstance(value, dict) and isinstance(value.get("Version"), str) else None
+            actual = wait_until(ready_info)
             check(actual["Version"] == version, "unexpected deployed version")
             report["actual_version"] = actual["Version"]
             password, other_password = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
