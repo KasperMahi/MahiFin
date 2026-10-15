@@ -7,7 +7,6 @@ import json
 import os
 from pathlib import Path
 import secrets
-import shlex
 import ssl
 import subprocess
 import sys
@@ -163,6 +162,7 @@ def hls_output(api, url, work):
     text = playlist.decode()
     import re
     init = re.search(r'#EXT-X-MAP:URI="([^"]+)"', text)
+    check(init is not None, "expected fragmented MP4 initialization map")
     segment = next((line for line in text.splitlines() if line and not line.startswith("#")), None)
     check(segment is not None, "HLS segment missing")
     prefix = api.send(urllib.parse.urljoin(playlist_url, init.group(1)))[0] if init else b""
@@ -176,6 +176,7 @@ def run(version, report):
     image = VERSIONS[version]
     phase = "environment"
     name = "mahifin-integration-" + uuid.uuid4().hex[:12]
+    probe_name = name + "-probe"
     network = name + "-network"
     report.update(version=version, evidence="real-disposable-jellyfin-linux", checks=[], conversions=[])
     command(["docker", "info", "--format", "{{.ServerVersion}}"])
@@ -194,7 +195,7 @@ def run(version, report):
             for path in (config, cache, private):
                 path.mkdir()
             command(["docker", "network", "create", "--internal", network])
-            command(["docker", "run", "-d", "--name", name, "--network", network, "--cpus", "2", "--memory", "3g", "-p", "127.0.0.1::8096", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image])
+            command(["docker", "run", "-d", "--name", name, "--user", f"{os.getuid()}:{os.getgid()}", "--network", network, "--cpus", "2", "--memory", "3g", "-p", "127.0.0.1::8096", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image])
             port = command(["docker", "port", name, "8096/tcp"]).decode().strip().split(":")[-1]
             bootstrap = API("http://127.0.0.1:" + port)
             phase = "server-startup"
@@ -225,7 +226,10 @@ def run(version, report):
             envfile = private / "environment"
             envfile.write_text("".join(f"{k}={v}\n" for k, v in values.items()))
             phase = "swift-production-client"
-            args = ["docker", "run", "--rm", "--network", "host", "--env-file", envfile, "-v", f"{ROOT / 'Packages/MahiFinCore'}:/workspace:ro", "-v", f"{private}:/integration", SWIFT, "bash", "-c", "cp /integration/ca.crt /usr/local/share/ca-certificates/mahifin-test.crt && update-ca-certificates >/dev/null && swift run --package-path /workspace --scratch-path /tmp/mahifin-build MahiFinIntegrationProbe"]
+            # CA installation needs root inside this disposable container. Return
+            # generated private files to the host owner without widening permissions.
+            script = f"trap 'chown -R {os.getuid()}:{os.getgid()} /integration' EXIT; cp /integration/ca.crt /usr/local/share/ca-certificates/mahifin-test.crt && update-ca-certificates >/dev/null && swift run --package-path /workspace --scratch-path /tmp/mahifin-build MahiFinIntegrationProbe"
+            args = ["docker", "run", "--rm", "--name", probe_name, "--network", "host", "--env-file", envfile, "-v", f"{ROOT / 'Packages/MahiFinCore'}:/workspace:ro", "-v", f"{private}:/integration", SWIFT, "bash", "-c", script]
             command(args, timeout=600)
             result = json.loads((private / "probe-private.json").read_text())
             report["checks"] += result["checks"]
@@ -264,6 +268,7 @@ def run(version, report):
             if proxy_server:
                 proxy_server.shutdown(); proxy_server.server_close()
             # Only names generated in this invocation. No shared containers/volumes touched.
+            subprocess.run(["docker", "rm", "-f", probe_name], capture_output=True)
             subprocess.run(["docker", "rm", "-f", name], capture_output=True)
             subprocess.run(["docker", "network", "rm", network], capture_output=True)
 

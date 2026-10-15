@@ -11,6 +11,7 @@ final class ConversionTests: XCTestCase {
             let query = Dictionary(uniqueKeysWithValues: URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!.map { ($0.name, $0.value!) })
             XCTAssertEqual(query["VideoCodec"], "copy")
             XCTAssertEqual(query["AudioCodec"], mode == .remux ? "copy" : "aac")
+            XCTAssertEqual(query["SegmentContainer"], "mp4")
             XCTAssertEqual(query["SubtitleStreamIndex"], "-1"); XCTAssertEqual(query["SubtitleMethod"], "External")
             XCTAssertEqual(query["AlwaysBurnInSubtitleWhenTranscoding"], "false")
             XCTAssertNil(query["MaxWidth"]); XCTAssertNil(query["VideoBitRate"])

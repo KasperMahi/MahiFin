@@ -6,7 +6,7 @@ Application, Objective-C adapter and tests are original implementation. No Swift
 
 Official VideoLAN VLCKit, LGPL-2.1-or-later. Copyright VideoLAN and VLC authors. License retained in Licenses/VLCKit-LGPL-2.1.txt. Package source pinned to revision `2e0868f5ed40fe59cd92f377645fdcc260c6e759` at https://github.com/videolan/vlckit. It references official binary `VLCKit-4.0-20260929-1631.zip` with SHA256 `f37c8dbdd4427d1a3f5d75dc4b8bd1ae863cef4426f9a405a2fd1c5c9012f1fb`. Downloaded by SwiftPM from VideoLAN; no binary copied into Git. Package minimums iOS/tvOS 12; our app minimums stay 18.
 
-Do not publish an app binary until corresponding libVLC/contrib build source and notices for the exact artifact, relinking/replacement materials and distribution terms are preserved and reviewed. Private CI compilation is not a completed public-distribution license audit. No library source is modified here. No universal codec, passthrough or HDR claim is made.
+Do not distribute an app binary, including via TestFlight, until corresponding libVLC/contrib build source and notices for the exact artifact, relinking/replacement materials and distribution terms are preserved and reviewed. Private CI compilation is not a completed distribution license audit. See [distribution preparation](docs/DISTRIBUTION.md) for exact provenance and signing gates. No library source is modified here. No universal codec, passthrough or HDR claim is made.
 
 CI uses FFmpeg to generate original synthetic clips only, not as a linked app dependency. Generated test media contains no third-party audiovisual work.
 

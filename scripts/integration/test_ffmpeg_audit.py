@@ -28,6 +28,20 @@ class AuditTests(unittest.TestCase):
         with self.assertRaises(AuditFailure):
             audit(["-codec:v:0", "libx264", "-codec:a:0", "aac"], "video", self.streams())
 
+    def test_video_requires_actual_bounded_encoder_bitrate(self):
+        argv = ["-codec:v:0", "libx264", "-codec:a:0", "aac"]
+        for rate in (None, "9000000", "0"):
+            with self.assertRaises(AuditFailure):
+                audit(argv + (["-b:v", rate] if rate else []), "video", self.streams(1920, 1080))
+        result = audit(argv + ["-b:v", "8000000"], "video", self.streams(1920, 1080))
+        self.assertFalse(result["video_copy"])
+
+    def test_copy_rejects_filter_scripts_and_indexed_pixel_changes(self):
+        argv = ["-c:v", "copy", "-c:a", "copy"]
+        for option in ("-filter_script:v:0", "-filter_complex_script", "-pix_fmt:v:0", "-s:v:0"):
+            with self.assertRaises(AuditFailure):
+                audit(argv + [option, "synthetic"], "remux", self.streams())
+
 
 if __name__ == "__main__":
     unittest.main()

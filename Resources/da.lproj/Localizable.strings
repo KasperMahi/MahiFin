@@ -75,7 +75,7 @@
 "engine.native" = "Indbygget / serverkopiering ved behov";
 "engine.alternative" = "Lokal VLC";
 "player.conversionTitle" = "Tillad videokonvertering til denne afspilning?";
-"player.conversionImpact" = "Videoen kan ikke bruge den valgte originale afspilning. Serverkonvertering bruger CPU og kan reducere 4K/HDR til H.264 SDR, højst 1080p / 8 Mb/s. Godkendelsen gælder kun dette element og denne kilde i dette forsøg. Annuller bevarer forbuddet mod videokonvertering.";
+"player.conversionImpact" = "Videoen kan ikke bruge den valgte originale afspilning. H.264-konvertering bruger serverens CPU og begrænser videoen til højst 1920×1080 (1080p) og 8 Mb/s. En 4K-kilde reduceres til 1080p eller lavere; HDR kan gå tabt. Godkendelsen gælder kun dette element og denne kilde i dette forsøg. Annuller bevarer forbuddet mod videokonvertering.";
 "player.acceptConversion" = "Afspil med videokonvertering";
 "player.conversionDeclined" = "Videokonvertering blev afvist. Der blev ikke sendt en konverteringsanmodning.";
 "player.audio" = "Lydspor";

@@ -31,9 +31,11 @@ def audit(argv, mode, streams):
     if mode in ("remux", "audioOnly"):
         if set(video) != {"copy"}:
             raise AuditFailure("copy path video encoder")
-        forbidden = {"-vf", "-filter:v", "-filter:v:0", "-filter_complex", "-s", "-s:v", "-s:v:0", "-pix_fmt"}
-        if forbidden.intersection(argv):
+        forbidden = {"-vf", "-filter_complex", "-filter_complex_script", "-lavfi", "-s", "-pix_fmt"}
+        if any(value in forbidden or value.startswith(("-filter:v", "-filter_script:v", "-s:v", "-pix_fmt:")) for value in argv):
             raise AuditFailure("copy path pixel processing")
+        if actual_video.get("codec_name") != "h264":
+            raise AuditFailure("copy path changed authored H264 codec")
         if (width, height) != (3840, 2160):
             raise AuditFailure("copy path changed original 4K dimensions")
         if mode == "remux" and set(audio) != {"copy"}:
@@ -45,6 +47,9 @@ def audit(argv, mode, streams):
             raise AuditFailure("approved video did not encode H264")
         if not width or not height or width > 1920 or height > 1080:
             raise AuditFailure("approved video exceeded disclosed resolution")
+        rates = [argv[i + 1] for i, flag in enumerate(argv[:-1]) if flag in {"-b:v", "-b:v:0"}]
+        if not rates or any(not value.isdecimal() or not 0 < int(value) <= 8_000_000 for value in rates):
+            raise AuditFailure("approved video exceeded or omitted disclosed bitrate")
     else:
         raise AuditFailure("unknown mode")
     return {"mode": mode, "video_encoders": video, "audio_encoders": audio,

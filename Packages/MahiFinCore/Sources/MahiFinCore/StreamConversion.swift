@@ -34,7 +34,9 @@ extension JellyfinClient {
         var query = [
             "UserId": account.userID, "DeviceId": deviceID, "MediaSourceId": source.Id, "PlaySessionId": session,
             "api_key": token, "VideoCodec": mode == .video ? "h264" : "copy",
-            "AudioCodec": mode == .remux ? "copy" : "aac", "SegmentContainer": "fmp4",
+            // Jellyfin's API calls the fragmented-MP4 segment container "mp4".
+            // "fmp4" is ffmpeg's muxer value; the server treats it as invalid here.
+            "AudioCodec": mode == .remux ? "copy" : "aac", "SegmentContainer": "mp4",
             "AllowVideoStreamCopy": "true", "AllowAudioStreamCopy": mode == .remux ? "true" : "false",
             "EnableAutoStreamCopy": "true", "SubtitleStreamIndex": "-1", "SubtitleMethod": "External",
             "AlwaysBurnInSubtitleWhenTranscoding": "false"

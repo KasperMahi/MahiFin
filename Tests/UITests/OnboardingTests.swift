@@ -62,6 +62,7 @@ final class OnboardingTests: XCTestCase {
         XCTAssertTrue(request.waitForExistence(timeout: 15))
         request.tap()
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.alerts.firstMatch.staticTexts.matching(NSPredicate(format: "label CONTAINS '1920' AND label CONTAINS '1080p' AND label CONTAINS '4K' AND label CONTAINS '8 Mb/s'")).firstMatch.exists)
         XCTAssertEqual(app.staticTexts["consent.count"].label, "Encoding URLs: 0")
         app.alerts.buttons["Cancel"].tap()
         XCTAssertEqual(app.staticTexts["consent.result"].label, "declined")

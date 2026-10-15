@@ -75,7 +75,7 @@
 "engine.native" = "Native / server copy fallback";
 "engine.alternative" = "Local VLC";
 "player.conversionTitle" = "Allow video conversion for this playback?";
-"player.conversionImpact" = "The video cannot use the selected original route. Server video conversion uses CPU and may reduce 4K/HDR to H.264 SDR, at most 1080p / 8 Mb/s. This approval applies only to this item and source for this attempt. Cancel keeps video conversion disabled.";
+"player.conversionImpact" = "The video cannot use the selected original route. H.264 video conversion uses server CPU and limits output to at most 1920×1080 (1080p) and 8 Mb/s video. A 4K source will be reduced to 1080p or lower; HDR may be lost. Approval applies only to this item and source for this attempt. Cancel keeps video conversion disabled.";
 "player.acceptConversion" = "Play with video conversion";
 "player.conversionDeclined" = "Video conversion was declined. No conversion request was issued.";
 "player.audio" = "Audio track";

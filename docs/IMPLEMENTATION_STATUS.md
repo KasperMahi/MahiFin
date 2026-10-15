@@ -4,13 +4,24 @@ Evidence is scoped: implemented means code exists and is wired; compile-tested m
 
 ## Verification evidence
 
-- **Current verified executable snapshot: 9820b77**, [successful CI run 38635769265](https://github.com/KasperMahi/MahiFin/actions/runs/38635769265): **33 core tests, both unsigned simulator builds, 5 iOS + 3 tvOS XCUITests**, Xcode 16.4 / Swift 6.1.2 / macOS 15 / OS 18.5. Final handoff changes documentation only; executable/project/workflow/test files match this commit.
+- **Last verified executable snapshot: 9820b77**, [successful CI run 38635769265](https://github.com/KasperMahi/MahiFin/actions/runs/38635769265): **33 core tests, both unsigned simulator builds, 5 iOS + 3 tvOS XCUITests**, Xcode 16.4 / Swift 6.1.2 / macOS 15 / OS 18.5. Later integration/segment-container/disclosure changes are **not compile-tested yet**; that green run is baseline evidence only.
+- Current Linux/Apple runs [38708083391](https://github.com/KasperMahi/MahiFin/actions/runs/38708083391) / [38708083376](https://github.com/KasperMahi/MahiFin/actions/runs/38708083376) failed before runner assignment, without steps/logs. Exact startup annotation unavailable through connector; owner inspection pending. No new real-server/ffmpeg execution result exists. See REAL_SERVER_TESTS.md for rerun steps.
 - Windows Python structural checks passed: deterministic project, target minimums, fixture parsing, localization key parity. No Swift/Xcode installed locally.
 - Both platforms passed EN/DA onboarding, empty-credential guards and real VLCKit synthetic H.264/AAC MKV playback/track enumeration/EOF. iOS additionally passed insecure-server rejection, embedded SRT off/select, actual seek-position assertion, and shared production video-consent Cancel/Accept/new-attempt UI test. These do not prove subtitle pixels, audible output, physical remotes or broad codec support.
 - Pinned official VLCKit and iOS-only Google Cast SDK; notices/source-distribution gates in THIRD_PARTY_NOTICES.md. Media is generated from authored color/audio/subtitle fixtures in CI, with no private content.
 - Earlier compiler/runner/fixture failures and exact repairs remain in PROGRESS.md and Git history. The extra SRT muxing input is now outside bundled resources; strict one-embedded-track assertions pass. xcresult evidence is retained by CI.
 
 ## Acceptance matrix
+
+Continuation evidence override (2026-10-15): existing "Yes" compile entries below refer to the verified baseline. PLAY-03's corrected `SegmentContainer=mp4`, UI disclosure and new Swift integration executable await compilation. The new dialog text assertion has not run.
+
+| Continuation gate | Implemented | Compile / automated evidence | Real server / device status |
+|---|---|---|---|
+| I1/I2 Linux integration matrix, production Swift probe | Harness and 10.10.7/10.11.0 candidates | Python syntax/structural checks; Swift uncompiled | Blocked before runner; actual deployed versions/digests not yet obtained |
+| I3 HLS remux/audio/video, actual ffmpeg audit and DELETE cleanup | Orchestrator + strict output/argv assertions | Six inspector unit tests locally; no execution evidence from fixtures | Real server/ffmpeg pending; no video-copy compatibility claim |
+| I4 mp4 API contract fix / 4K quality disclosure | EN/DA 1080p/8 Mb/s/HDR disclosure and UI assertion | Source-reviewed contract; new Swift/UI changes untested | Both unsigned builds and simulator rerun blocked |
+| I5 Cast security investigation | Actionable receiver/auth/conversion strategy documented | Public source reviewed; no credential sent | Receiver owner patch/deployment and physical validation blocked |
+| I6 Distribution preparation | Signing/Actions/ASC/TestFlight procedure and license review documented | No signed build, upload or Xcode 26 validation | Exact LGPL binary provenance/relinking, vendor terms/privacy and future credentials pending |
 
 | ID | Implemented / limitations | Compile-tested | Fixture-tested evidence | Hardware / next step |
 |---|---|---|---|---|
