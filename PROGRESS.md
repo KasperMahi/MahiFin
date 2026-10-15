@@ -64,11 +64,12 @@ These are required release gates, not completed modules. The initial compileable
 ## Continuation milestones — existing branch / draft PR #1
 
 - [x] R0: Review correctness, completed offline resume/original-size fixes; regression tests + both unsigned CI builds passed at 2b54fb8 (onboarding smoke result tracked separately).
-- [ ] R1: Pin licensed official VLCKit, wire local/streaming alternative player, controls/seek/tracks; synthetic-media tests + both CI builds.
-- [ ] R2: Consent-scoped server remux/audio conversion/video execution and request fixtures.
-- [ ] R3: Native 4K/HDR capability probing and conservative profile tests; physical output remains pending.
-- [ ] R4: Official iOS Cast SDK + Jellyfin receiver protocol/auth and controls, consent safety, no credential logging.
-- [ ] R5: Offline/track/UI improvements, realistic fixtures and playback lifecycle/UI expansion.
+- [x] R1: Official pinned VLCKit original adapter; real synthetic MKV playback/track enumeration/EOF both platforms; iOS seek/subtitle selection verified. Wider codecs/output/license distribution gate remains.
+- [x] R2: Copy/audio/video URL execution wiring, selected-audio policy, scoped expiring grant and actual Cancel/Accept/new-attempt UI test. Live server ffmpeg/HLS execution remains pending.
+- [x] R3: Apple HEVC/HDR eligibility probes and conservative profile tests. Physical 4K/HDR output remains pending.
+- [x] R4a: Official iOS Cast SDK discovery/configured-ID/session/control adapter and per-command consent compile-tested; privacy/ID fixture tests pass.
+- [ ] R4b BLOCKED: Jellyfin receiver auth/load/history/lock-screen flow; receiver logs accessToken envelopes and independently negotiates conversion. Exact repair/deployment/device exit steps in decisions/manual tests.
+- [x] R5: Atomic offline snapshots/queue, selective sync, preroll/stale lifecycle guards, HTTP 206 integrity, localized controls and realistic fixture/UI expansion tested at scope below. Full background/download/catalog/auto-next UI/device matrix remains.
 
 Continuation audit: clean `codex/initial-implementation` at 820cd45; draft PR #1 open/unmerged. Existing work retained. Found completed offline events resuming at duration and download HTTP length replacing authoritative original size. Also reviewing stale completion ordering and conflict queue head-of-line blocking. Official VLCKit revision 2e0868f5ed40fe59cd92f377645fdcc260c6e759 declares iOS/tvOS 12; pinned nightly binary/API must be compiler-tested before enabling capability. SwiftVLC main requires tools 6.3, incompatible with Xcode 16.4 unchanged. No dependency enabled yet.
 
@@ -101,3 +102,11 @@ Iteration 5: run 38632768362 at f103d67 passed **32 core tests, both unsigned bu
 Resume review: VLC may emit initial zero/preroll callbacks before its requested seek settles. Shared ResumeGate now prevents those callbacks from overwriting saved history; early stop/error preserves the requested resume, and later intentional rewind still records zero after the gate settles. Added regression test; final rerun required. No broad physical seek/decoder guarantee is implied.
 
 The corresponding native setup window is protected too: retain the requested offset while preferences/seek prepare an attached AVPlayer, skip premature checkpoints, preserve it on navigation/early stop, and reject a failed seek completion. A stopped/old setup cannot clear the replacement's pending resume. Hardware/native-seek interruption UI cases remain pending; both targets must compile this follow-up.
+
+## Current verified continuation — resume here
+
+[CI run 38635769265](https://github.com/KasperMahi/MahiFin/actions/runs/38635769265) **SUCCEEDED at 9820b77**: **33 core tests**, **both unsigned simulator builds**, **5 iOS + 3 tvOS XCUITests**, Xcode 16.4 / Swift 6.1.2 / OS 18.5 on macOS 15. Real VLCKit synthetic H.264/AAC MKV enumeration/EOF passed both platforms; iOS also verified embedded SRT off/select and actual seek position near 18 seconds. Shared production video-consent Cancel/Accept/new-attempt test passed. Strict assertions retained; sidecar input was correctly isolated. Source/package pins and deployment targets remain unchanged. Earlier failed/cancelled runs above are historical; use this evidence.
+
+Final handoff updates documentation only; executable/project/workflow/test files match 9820b77. Draft PR #1 remains open/unmerged. Resume from the unchecked required release gates and status matrix; do not reimplement completed adapters or repeat the initial audit.
+
+Remaining: secure deployed receiver auth/conversion contract (external Cast blocker); live Jellyfin 10.10/10.11/12 copy/audio/video/cleanup validation; broader media/subtitle preferences/external tracks and catalog/download/auto-next UI tests; physical iPhone/Apple TV/AirPlay/background/airplane-mode/history/HDR/audio/legacy Cast matrix; exact LGPL corresponding-source/relinking and Google distribution terms. No real server, credentials, physical output or background-transfer behavior was tested here.
