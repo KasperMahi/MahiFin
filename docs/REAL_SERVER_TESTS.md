@@ -2,6 +2,8 @@
 
 Status: implemented harness, **not executed successfully yet**. GitHub runs [38708083391](https://github.com/KasperMahi/MahiFin/actions/runs/38708083391) (Linux) and [38708083376](https://github.com/KasperMahi/MahiFin/actions/runs/38708083376) (Apple) failed before runner assignment: no steps or logs. The startup annotation is unavailable through the connector. Do not interpret that failure as a Swift, ffmpeg or Jellyfin result. Windows has no running Linux Docker daemon or Swift compiler.
 
+Owner subsequently confirmed the cause: **monthly GitHub Actions usage limit reached**. Wait for quota reset or an owner-authorized alternative runner before retrying. No paid capacity or billing change is authorized by this clarification.
+
 ## Reproduce
 
 On an isolated Linux machine with Docker Engine, Python 3, OpenSSL and ffprobe, from the repository root:
@@ -35,7 +37,7 @@ The Swift probe is an executable test target, never linked into either app. It u
 
 ## Resume after infrastructure failure
 
-1. Read the failed Actions run's startup annotation in authenticated GitHub. Restore runner eligibility through the owner if required; do not disable checks or silently move to a paid runner.
+1. Confirm Actions capacity has returned after the monthly usage limit, or obtain an owner-authorized alternative runner. Do not disable checks or silently move to a paid runner. Inspect startup annotations only if failures persist after capacity returns.
 2. Rerun both complete workflows on the current commit. Inspect private logs locally if needed; expose only allowlisted failure categories in artifacts. Fix actual compiler/API/encoding failures without weakening copy/consent assertions.
 3. Record exact successful SHA, run links, image digests, counts and conversion results in PROGRESS/status. A pending probe or old Apple green run cannot establish current compatibility.
 4. Repeat the manual UI/device procedures after real-server CI is green. Never infer physical HDR output or background-download reliability from Linux/simulator results.
