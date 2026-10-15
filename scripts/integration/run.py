@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import http.client
 import http.server
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -34,16 +35,22 @@ def check(value, code):
 
 
 def command(args, timeout=300, setup_diagnostics=False):
-    result = subprocess.run([str(a) for a in args], capture_output=True, timeout=timeout)
+    try:
+        result = subprocess.run([str(a) for a in args], capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if setup_diagnostics:
+            print(f"INTEGRATION: fixture setup timeout after {timeout}s", flush=True)
+        raise Failure("bounded subprocess timeout") from None
     if result.returncode:
         if setup_diagnostics:
-            # Only authored fixture generation, before server/password creation.
+            # Only authored fixtures / Docker setup, before password creation.
             # Never enable for server/API/Swift commands containing private data.
             import re
             print(f"INTEGRATION: fixture setup exit={result.returncode}", flush=True)
             for line in result.stderr.decode(errors="replace").splitlines()[-12:]:
+                if re.search(r"api_key|accessToken|Authorization|password", line, flags=re.I):
+                    line = "[sensitive diagnostic omitted]"
                 line = re.sub(r"[a-zA-Z][a-zA-Z0-9+.-]*://\S+", "[URL]", line)
-                line = re.sub(r"(?:api_key|accessToken|Authorization)\s*[=:]\s*\S+", "[REDACTED]", line, flags=re.I)
                 print("INTEGRATION: setup stderr: " + line[:300], flush=True)
         for line in result.stdout.decode(errors="replace").splitlines():
             if line.startswith("INTEGRATION:"):
@@ -120,16 +127,18 @@ def proxy(upstream, certificate, key):
     return server
 
 
-def media(work, image):
+def media(work):
     root = work / "media"
     movies, series = root / "Movies", root / "Series" / "Fixture Series" / "Season 01"
     movies.mkdir(parents=True); series.mkdir(parents=True)
     (root / "source.srt").write_text("1\n00:00:01,000 --> 00:00:08,000\nAuthored synthetic subtitle\n")
-    ffmpeg = ["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}", "-v", f"{root}:/fixtures", "--entrypoint", "/usr/lib/jellyfin-ffmpeg/ffmpeg", image]
+    # Fixture authoring is independent of Jellyfin's runtime ffmpeg. CI already
+    # installs host ffmpeg/ffprobe; server conversion is still audited separately.
+    ffmpeg = ["ffmpeg", "-nostdin"]
     for title, size, codec in [("Fixture Original", "256x144", "aac"), ("Fixture Copy 4K", "3840x2160", "aac"), ("Fixture Audio 4K", "3840x2160", "flac")]:
         folder = movies / title; folder.mkdir()
-        relative = f"/fixtures/Movies/{title}/{title}.mkv"
-        command(ffmpeg + ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"color=c=blue:s={size}:r=1:d=900", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-i", "/fixtures/source.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "ultrafast", "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", codec, "-c:s", "srt", "-t", "900", relative], timeout=600, setup_diagnostics=True)
+        output = folder / f"{title}.mkv"
+        command(ffmpeg + ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"color=c=blue:s={size}:r=1:d=900", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-i", root / "source.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "ultrafast", "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", codec, "-c:s", "srt", "-t", "900", output], timeout=600, setup_diagnostics=True)
         (folder / f"{title}.nfo").write_text(f"<movie><title>{title}</title><year>2020</year></movie>")
     import shutil
     for number in (1, 2):
@@ -199,17 +208,21 @@ def run(version, report):
             report["server_image"] = json.loads(command(["docker", "image", "inspect", image]))[0]["RepoDigests"][0]
             report["swift_image"] = json.loads(command(["docker", "image", "inspect", SWIFT]))[0]["RepoDigests"][0]
             phase = "synthetic-media"
-            source = media(work, image)
+            source = media(work)
             config, cache, private = work / "config", work / "cache", work / "private"
             for path in (config, cache, private):
                 path.mkdir()
             phase = "docker-network"
             command(["docker", "network", "create", "--internal", network], setup_diagnostics=True)
             phase = "docker-start"
-            command(["docker", "run", "-d", "--name", name, "--user", f"{os.getuid()}:{os.getgid()}", "--network", network, "--cpus", "2", "--memory", "3g", "-p", "127.0.0.1::8096", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image], setup_diagnostics=True)
-            phase = "docker-port"
-            port = command(["docker", "port", name, "8096/tcp"], setup_diagnostics=True).decode().strip().split(":")[-1]
-            bootstrap = API("http://127.0.0.1:" + port)
+            command(["docker", "run", "-d", "--name", name, "--user", f"{os.getuid()}:{os.getgid()}", "--network", network, "--cpus", "2", "--memory", "3g", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image], setup_diagnostics=True)
+            phase = "docker-address"
+            # Internal bridges do not publish ports. The Linux host can reach
+            # its private bridge directly; no host listener or Internet egress.
+            address = command(["docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name], setup_diagnostics=True).decode().strip()
+            parsed = ipaddress.IPv4Address(address)
+            check(parsed.is_private and not (parsed.is_loopback or parsed.is_unspecified or parsed.is_multicast), "expected private Docker bridge address")
+            bootstrap = API(f"http://{address}:8096")
             phase = "server-startup"
             actual = wait_until(lambda: bootstrap.json("System/Info/Public"))
             check(actual["Version"] == version, "unexpected deployed version")
