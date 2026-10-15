@@ -261,6 +261,7 @@ def run(version, report):
             command(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", certificate, "-days", "1", "-subj", "/CN=MahiFinDisposable", "-addext", "subjectAltName=IP:127.0.0.1,DNS:localhost"])
             proxy_server = proxy(bootstrap.base, certificate, key)
             base = "https://127.0.0.1:" + str(proxy_server.server_port)
+            check(API(base, ca=certificate).json("System/Info/Public")["Version"] == version, "trusted proxy public info mismatch")
             values = {"MAHIFIN_DISPOSABLE": "1", "MAHIFIN_TEST_SERVER": base, "MAHIFIN_TEST_PASSWORD": password, "MAHIFIN_OTHER_PASSWORD": other_password, "MAHIFIN_PRIVATE_OUTPUT": "/integration", "MAHIFIN_TEST_ACCEPT_VIDEO": "1"}
             envfile = private / "environment"
             envfile.write_text("".join(f"{k}={v}\n" for k, v in values.items()))

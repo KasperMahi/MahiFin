@@ -154,6 +154,14 @@ actor LostWriteResponse: HTTPTransport {
                 print("INTEGRATION: client category \(String(describing: error))")
             } else if let error = error as? URLError {
                 print("INTEGRATION: transport code \(error.code.rawValue)")
+                if phase == "public-system-info" {
+                    // This anonymous request has no token/password. Curl's reason
+                    // is needed for Linux TLS/protocol diagnosis; redact any URL.
+                    let reason = error.localizedDescription.replacingOccurrences(
+                        of: #"[a-zA-Z][a-zA-Z0-9+.-]*://\S+"#, with: "[URL]", options: .regularExpression)
+                        .replacingOccurrences(of: "\n", with: " ").replacingOccurrences(of: "\r", with: " ")
+                    print("INTEGRATION: anonymous transport reason \(reason.prefix(300))")
+                }
             } else if error is DecodingError {
                 print("INTEGRATION: response decoding failed")
             } else if error is ProbeFailure {
