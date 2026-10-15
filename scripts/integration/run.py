@@ -33,18 +33,18 @@ def check(value, code):
         raise Failure(code)
 
 
-def command(args, timeout=300, media_diagnostics=False):
+def command(args, timeout=300, setup_diagnostics=False):
     result = subprocess.run([str(a) for a in args], capture_output=True, timeout=timeout)
     if result.returncode:
-        if media_diagnostics:
+        if setup_diagnostics:
             # Only authored fixture generation, before server/password creation.
             # Never enable for server/API/Swift commands containing private data.
             import re
-            print(f"INTEGRATION: media generator exit={result.returncode}", flush=True)
+            print(f"INTEGRATION: fixture setup exit={result.returncode}", flush=True)
             for line in result.stderr.decode(errors="replace").splitlines()[-12:]:
                 line = re.sub(r"[a-zA-Z][a-zA-Z0-9+.-]*://\S+", "[URL]", line)
                 line = re.sub(r"(?:api_key|accessToken|Authorization)\s*[=:]\s*\S+", "[REDACTED]", line, flags=re.I)
-                print("INTEGRATION: media stderr: " + line[:300], flush=True)
+                print("INTEGRATION: setup stderr: " + line[:300], flush=True)
         for line in result.stdout.decode(errors="replace").splitlines():
             if line.startswith("INTEGRATION:"):
                 print(line, flush=True)
@@ -129,7 +129,7 @@ def media(work, image):
     for title, size, codec in [("Fixture Original", "256x144", "aac"), ("Fixture Copy 4K", "3840x2160", "aac"), ("Fixture Audio 4K", "3840x2160", "flac")]:
         folder = movies / title; folder.mkdir()
         relative = f"/fixtures/Movies/{title}/{title}.mkv"
-        command(ffmpeg + ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"color=c=blue:s={size}:r=1:d=900", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-i", "/fixtures/source.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "ultrafast", "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", codec, "-c:s", "srt", "-t", "900", relative], timeout=600, media_diagnostics=True)
+        command(ffmpeg + ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", f"color=c=blue:s={size}:r=1:d=900", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-i", "/fixtures/source.srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", "-c:v", "libx264", "-preset", "ultrafast", "-threads", "2", "-pix_fmt", "yuv420p", "-c:a", codec, "-c:s", "srt", "-t", "900", relative], timeout=600, setup_diagnostics=True)
         (folder / f"{title}.nfo").write_text(f"<movie><title>{title}</title><year>2020</year></movie>")
     import shutil
     for number in (1, 2):
@@ -203,9 +203,12 @@ def run(version, report):
             config, cache, private = work / "config", work / "cache", work / "private"
             for path in (config, cache, private):
                 path.mkdir()
-            command(["docker", "network", "create", "--internal", network])
-            command(["docker", "run", "-d", "--name", name, "--user", f"{os.getuid()}:{os.getgid()}", "--network", network, "--cpus", "2", "--memory", "3g", "-p", "127.0.0.1::8096", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image])
-            port = command(["docker", "port", name, "8096/tcp"]).decode().strip().split(":")[-1]
+            phase = "docker-network"
+            command(["docker", "network", "create", "--internal", network], setup_diagnostics=True)
+            phase = "docker-start"
+            command(["docker", "run", "-d", "--name", name, "--user", f"{os.getuid()}:{os.getgid()}", "--network", network, "--cpus", "2", "--memory", "3g", "-p", "127.0.0.1::8096", "-v", f"{source}:/media:ro", "-v", f"{config}:/config", "-v", f"{cache}:/cache", image], setup_diagnostics=True)
+            phase = "docker-port"
+            port = command(["docker", "port", name, "8096/tcp"], setup_diagnostics=True).decode().strip().split(":")[-1]
             bootstrap = API("http://127.0.0.1:" + port)
             phase = "server-startup"
             actual = wait_until(lambda: bootstrap.json("System/Info/Public"))
