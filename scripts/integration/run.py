@@ -228,12 +228,22 @@ def run(version, report):
             check(actual["Version"] == version, "unexpected deployed version")
             report["actual_version"] = actual["Version"]
             password, other_password = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+            phase = "startup-configuration"
             bootstrap.json("Startup/Configuration", "POST", {"UICulture": "en-US", "MetadataCountryCode": "US", "PreferredMetadataLanguage": "en"})
+            phase = "startup-user-initialize"
+            # GET performs UserManager.InitializeAsync; POST assumes a first user
+            # already exists (both audited server versions call Users.First()).
+            bootstrap.json("Startup/User")
+            phase = "startup-user-update"
             bootstrap.json("Startup/User", "POST", {"Name": "fixture-owner", "Password": password})
+            phase = "startup-remote-access"
             bootstrap.json("Startup/RemoteAccess", "POST", {"EnableRemoteAccess": False, "EnableAutomaticPortMapping": False})
+            phase = "startup-complete"
             bootstrap.json("Startup/Complete", "POST")
+            phase = "setup-authentication"
             auth = bootstrap.json("Users/AuthenticateByName", "POST", {"Username": "fixture-owner", "Pw": password})
             admin = API(bootstrap.base, auth["AccessToken"])
+            phase = "setup-other-user"
             admin.json("Users/New", "POST", {"Name": "fixture-other", "Password": other_password})
             phase = "library-scan"
             for title, kind, path in [("Fixture Movies", "movies", "/media/Movies"), ("Fixture Shows", "tvshows", "/media/Series")]:
@@ -287,6 +297,8 @@ def run(version, report):
             report["failure_type"] = type(error).__name__
             if isinstance(error, Failure):
                 print("INTEGRATION FAILED:", phase, str(error), flush=True)
+            elif isinstance(error, KeyError) and error.args[0] in {"Version", "AccessToken", "User", "Id", "Items", "checks", "token", "urls"}:
+                print("INTEGRATION FAILED:", phase, "missing expected field", error.args[0], flush=True)
             else:
                 print("INTEGRATION FAILED:", phase, type(error).__name__, flush=True)
         finally:
