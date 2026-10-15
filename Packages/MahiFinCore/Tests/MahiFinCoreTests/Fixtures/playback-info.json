@@ -1,0 +1,16 @@
+{
+  "PlaySessionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "MediaSources": [{
+    "Id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "Container": "mkv", "Size": 123456789,
+    "Protocol": "File", "VideoType": "VideoFile", "IsRemote": false, "RequiresOpening": false,
+    "SupportsDirectPlay": false, "SupportsDirectStream": true, "SupportsTranscoding": true,
+    "Path": "/private/fixture-only/invented.mkv",
+    "TranscodingUrl": "/Videos/fixture/master.m3u8?VideoCodec=h264&MaxWidth=320&api_key=fixture-secret",
+    "DefaultAudioStreamIndex": 1, "DefaultSubtitleStreamIndex": 2,
+    "MediaStreams": [
+      {"Type":"Video","Codec":"h264","Index":0,"Width":1920,"Height":1080,"Profile":"High","Level":41,"BitDepth":8,"VideoRangeType":"SDR"},
+      {"Type":"Audio","Codec":"truehd","Index":1,"Language":"eng","IsDefault":true},
+      {"Type":"Subtitle","Codec":"pgssub","Index":2,"Language":"dan","IsDefault":false}
+    ]
+  }]
+}

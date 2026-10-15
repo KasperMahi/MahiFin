@@ -1,0 +1,50 @@
+name: Apple build and fixtures
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Reproducible project and provenance
+        run: |
+          python3 scripts/generate_project.py
+          git diff --exit-code -- MahiFin.xcodeproj Apps/iOS/Info.plist Apps/tvOS/Info.plist
+          python3 scripts/check_repository.py
+      - name: Shared fixture tests
+        working-directory: Packages/MahiFinCore
+        run: swift test
+      - name: Author synthetic media fixtures
+        run: |
+          command -v ffmpeg || brew install ffmpeg
+          python3 scripts/generate_media.py
+      - name: iOS unsigned simulator build
+        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-iOS -destination 'generic/platform=iOS Simulator' -clonedSourcePackagesDirPath "$PWD/DerivedData/SourcePackages" -derivedDataPath DerivedData/iOS CODE_SIGNING_ALLOWED=NO build
+      - name: tvOS unsigned simulator build
+        run: xcodebuild -project MahiFin.xcodeproj -scheme MahiFin-tvOS -destination 'generic/platform=tvOS Simulator' -clonedSourcePackagesDirPath "$PWD/DerivedData/SourcePackages" -derivedDataPath DerivedData/tvOS CODE_SIGNING_ALLOWED=NO build
+      - name: Simulator availability
+        run: xcrun simctl list devices available
+      - name: Native onboarding UI smoke
+        run: python3 scripts/simulator_smoke.py
+      - name: Simulator test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-test-results
+          path: TestResults
+          if-no-files-found: ignore
+          retention-days: 7
